@@ -61,6 +61,17 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #preferences-form {
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, padding 0.5s ease-in-out;
+            max-height: 1000px; /* Large enough to not clip */
+            overflow: hidden;
+        }
+        #preferences-form.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -74,40 +85,52 @@
         </header>
 
         <!-- Preferences Section -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg mb-8 sticky top-4 z-10">
-            <h2 class="text-2xl font-bold mb-4 text-slate-900">Plan Your Hike</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <!-- Date Input -->
-                <div>
-                    <label for="date-input" class="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                    <input type="date" id="date-input" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <!-- Time Range -->
-                <div>
-                    <label for="time-start" class="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
-                    <select id="time-start" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
-                </div>
-                <div>
-                    <label for="time-end" class="block text-sm font-medium text-slate-700 mb-1">End Time</label>
-                    <select id="time-end" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
-                </div>
-                <!-- Preferences -->
-                <div class="md:col-span-3 lg:col-span-2 grid grid-cols-2 gap-4">
-                     <div>
-                        <label for="sunshine-pref" class="block text-sm font-medium text-slate-700 mb-1">☀️ Sunshine</label>
-                        <input type="range" id="sunshine-pref" min="0" max="100" value="70" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+        <div id="preferences-container" class="bg-white rounded-2xl shadow-lg mb-8 sticky top-4 z-10">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200">
+                <h2 id="preferences-title" class="text-xl font-bold text-slate-900">Plan Your Hike</h2>
+                <button id="toggle-prefs-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md">Hide</button>
+            </div>
+
+            <!-- Collapsed Summary View (shown via JS) -->
+            <div id="preferences-summary" class="hidden p-4 cursor-pointer">
+                <!-- Summary content will be injected here -->
+            </div>
+
+            <!-- Collapsible Form -->
+            <div id="preferences-form" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                    <!-- Date Input -->
+                    <div>
+                        <label for="date-input" class="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                        <input type="date" id="date-input" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <!-- Time Range -->
+                    <div>
+                        <label for="time-start" class="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
+                        <select id="time-start" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
                     </div>
                     <div>
-                        <label for="rain-pref" class="block text-sm font-medium text-slate-700 mb-1">💧 Max Rain Chance</label>
-                        <input type="range" id="rain-pref" min="0" max="100" value="10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                        <label for="time-end" class="block text-sm font-medium text-slate-700 mb-1">End Time</label>
+                        <select id="time-end" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
                     </div>
-                     <div>
-                        <label for="fog-pref" class="block text-sm font-medium text-slate-700 mb-1">🌫️ Max Fog Chance</label>
-                        <input type="range" id="fog-pref" min="0" max="100" value="20" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
-                    </div>
-                    <div>
-                        <label for="wind-pref" class="block text-sm font-medium text-slate-700 mb-1">💨 Max Wind Speed (mph)</label>
-                        <input type="range" id="wind-pref" min="0" max="30" value="15" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                    <!-- Preferences -->
+                    <div class="md:col-span-3 lg:col-span-2 grid grid-cols-2 gap-4">
+                         <div>
+                            <label for="sunshine-pref" class="block text-sm font-medium text-slate-700 mb-1">☀️ Sunshine</label>
+                            <input type="range" id="sunshine-pref" min="0" max="100" value="70" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                        </div>
+                        <div>
+                            <label for="rain-pref" class="block text-sm font-medium text-slate-700 mb-1">💧 Max Rain Chance</label>
+                            <input type="range" id="rain-pref" min="0" max="100" value="10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                        </div>
+                         <div>
+                            <label for="fog-pref" class="block text-sm font-medium text-slate-700 mb-1">🌫️ Max Fog Chance</label>
+                            <input type="range" id="fog-pref" min="0" max="100" value="20" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                        </div>
+                        <div>
+                            <label for="wind-pref" class="block text-sm font-medium text-slate-700 mb-1">💨 Max Wind Speed (mph)</label>
+                            <input type="range" id="wind-pref" min="0" max="30" value="15" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer preference-slider">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -139,67 +162,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             // --- PARK CONFIGURATION ---
             const parksConfig = [
-                {
-                    id: 1,
-                    name: "Mount Tamalpais State Park",
-                    description: "Rising from the heart of Marin County, this park offers everything from redwood groves to oak woodlands and spectacular views of the San Francisco Bay.",
-                    regions: [
-                        { name: "Coastal Trail", lat: 37.90, lon: -122.64, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" },
-                        { name: "East Peak", lat: 37.92, lon: -122.59, mapPath: "M190 80 C 220 140, 250 140, 280 80 S 280 20, 250 20 S 220 20, 190 80" }
-                    ]
-                },
-                {
-                    id: 2,
-                    name: "Point Reyes National Seashore",
-                    description: "A vast expanse of protected coastline with dramatic cliffs, expansive beaches, and rich biodiversity.",
-                    regions: [
-                        { name: "Lighthouse", lat: 37.99, lon: -123.01, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" },
-                        { name: "Bear Valley", lat: 38.04, lon: -122.80, mapPath: "M190 80 C 220 140, 250 140, 280 80 S 280 20, 250 20 S 220 20, 190 80" }
-                    ]
-                },
-                {
-                    id: 3,
-                    name: "Muir Woods National Monument",
-                    description: "Experience the awe of ancient coast redwood trees in this serene and majestic forest.",
-                    regions: [
-                        { name: "Main Grove", lat: 37.89, lon: -122.57, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }
-                    ]
-                },
-                {
-                    id: 4,
-                    name: "McNee Ranch State Park",
-                    description: "Offers challenging climbs up Montara Mountain with panoramic views of the Pacific coast.",
-                    regions: [
-                        { name: "Montara Mountain", lat: 37.55, lon: -122.51, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }
-                    ]
-                },
-                {
-                    id: 5,
-                    name: "Tomales Bay State Park",
-                    description: "Features sheltered coves, sandy beaches, and gentle trails perfect for a relaxed day outdoors.",
-                    regions: [
-                        { name: "Heart's Desire Beach", lat: 38.15, lon: -122.89, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }
-                    ]
-                },
-                {
-                    id: 6,
-                    name: "Marin Headlands",
-                    description: "Iconic views of the Golden Gate Bridge, rugged coastline, and historic military fortifications.",
-                    regions: [
-                        { name: "Hawk Hill", lat: 37.83, lon: -122.50, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }
-                    ]
-                },
-                {
-                    id: 7,
-                    name: "Wilder Ranch State Park",
-                    description: "A coastal park with historic farm buildings, ocean bluffs, and miles of trails through terraces and canyons.",
-                    regions: [
-                        { name: "Coastal Bluffs", lat: 36.94, lon: -122.11, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }
-                    ]
-                }
+                { id: 1, name: "Mount Tamalpais State Park", description: "Rising from the heart of Marin County...", regions: [{ name: "Coastal Trail", lat: 37.90, lon: -122.64, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }, { name: "East Peak", lat: 37.92, lon: -122.59, mapPath: "M190 80 C 220 140, 250 140, 280 80 S 280 20, 250 20 S 220 20, 190 80" }] },
+                { id: 2, name: "Point Reyes National Seashore", description: "A vast expanse of protected coastline...", regions: [{ name: "Lighthouse", lat: 37.99, lon: -123.01, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }, { name: "Bear Valley", lat: 38.04, lon: -122.80, mapPath: "M190 80 C 220 140, 250 140, 280 80 S 280 20, 250 20 S 220 20, 190 80" }] },
+                { id: 3, name: "Muir Woods National Monument", description: "Experience the awe of ancient coast redwood trees...", regions: [{ name: "Main Grove", lat: 37.89, lon: -122.57, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }] },
+                { id: 4, name: "McNee Ranch State Park", description: "Offers challenging climbs up Montara Mountain...", regions: [{ name: "Montara Mountain", lat: 37.55, lon: -122.51, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }] },
+                { id: 5, name: "Tomales Bay State Park", description: "Features sheltered coves, sandy beaches...", regions: [{ name: "Heart's Desire Beach", lat: 38.15, lon: -122.89, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }] },
+                { id: 6, name: "Marin Headlands", description: "Iconic views of the Golden Gate Bridge...", regions: [{ name: "Hawk Hill", lat: 37.83, lon: -122.50, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }] },
+                { id: 7, name: "Wilder Ranch State Park", description: "A coastal park with historic farm buildings...", regions: [{ name: "Coastal Bluffs", lat: 36.94, lon: -122.11, mapPath: "M10 80 C 40 20, 65 20, 95 80 S 150 140, 190 80" }] }
             ];
             
-            let parksData = []; // This will be populated by the API
+            let parksData = []; 
 
             // --- UI ELEMENTS ---
             const dateInput = document.getElementById('date-input');
@@ -213,6 +185,13 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             const modal = document.getElementById('park-modal');
             const modalContent = document.getElementById('modal-content');
+
+            // Collapsible Preferences UI
+            const prefsForm = document.getElementById('preferences-form');
+            const prefsSummary = document.getElementById('preferences-summary');
+            const togglePrefsBtn = document.getElementById('toggle-prefs-btn');
+            const prefsTitle = document.getElementById('preferences-title');
+            let isPrefsCollapsed = false;
 
             // --- INITIALIZATION ---
             async function initialize() {
@@ -229,18 +208,90 @@
                 timeStartSelect.value = 9;
                 timeEndSelect.value = 17;
 
+                setupEventListeners();
+                
+                // Collapse by default on mobile
+                if (window.innerWidth < 768) {
+                    togglePreferencesView(true);
+                }
+
                 await fetchAllWeatherData();
                 loadingIndicator.style.display = 'none';
                 
                 updateUI();
+            }
 
+            function setupEventListeners() {
                 [dateInput, timeStartSelect, timeEndSelect, sunshinePref, rainPref, fogPref, windPref].forEach(el => {
-                    el.addEventListener('input', updateUI);
+                    el.addEventListener('input', handleFilterChange);
                 });
 
+                togglePrefsBtn.addEventListener('click', () => togglePreferencesView());
+                prefsSummary.addEventListener('click', () => togglePreferencesView(false));
+                
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) closeModal();
                 });
+            }
+
+            function handleFilterChange() {
+                updateUI();
+                if (isPrefsCollapsed) {
+                    updatePreferencesSummary();
+                }
+            }
+
+            // --- COLLAPSIBLE PREFERENCES LOGIC ---
+            function togglePreferencesView(forceCollapse) {
+                isPrefsCollapsed = forceCollapse !== undefined ? forceCollapse : !isPrefsCollapsed;
+
+                if (isPrefsCollapsed) {
+                    prefsForm.classList.add('collapsed');
+                    prefsSummary.classList.remove('hidden');
+                    updatePreferencesSummary();
+                    togglePrefsBtn.textContent = 'Edit Filters';
+                    prefsTitle.textContent = 'Your Filters';
+                } else {
+                    prefsForm.classList.remove('collapsed');
+                    prefsSummary.classList.add('hidden');
+                    togglePrefsBtn.textContent = 'Hide';
+                    prefsTitle.textContent = 'Plan Your Hike';
+                }
+            }
+
+            function getUserPreferences() {
+                 return {
+                    date: dateInput.value,
+                    start: parseInt(timeStartSelect.value),
+                    end: parseInt(timeEndSelect.value),
+                    sun: parseInt(sunshinePref.value),
+                    rain: parseInt(rainPref.value),
+                    fog: parseInt(fogPref.value),
+                    wind: parseInt(windPref.value)
+                };
+            }
+
+            function updatePreferencesSummary() {
+                const prefs = getUserPreferences();
+                const summaryHTML = `
+                    <div class="flex flex-wrap items-center justify-between text-sm text-slate-700 gap-x-4 gap-y-1">
+                        <div class="flex items-center font-semibold">
+                            <span>📅</span>
+                            <span class="ml-1.5">${dayjs(prefs.date).format('ddd, MMM D')}</span>
+                        </div>
+                        <div class="flex items-center">
+                             <span>🕒</span>
+                             <span class="ml-1.5">${dayjs().hour(prefs.start).format('hA')} - ${dayjs().hour(prefs.end).format('hA')}</span>
+                        </div>
+                        <div class="flex items-center gap-x-3 text-slate-600">
+                             <span>☀️${prefs.sun}%+</span>
+                             <span>💧<${prefs.rain}%</span>
+                             <span>🌫️<${prefs.fog}%</span>
+                             <span>💨<${prefs.wind}mph</span>
+                        </div>
+                    </div>
+                `;
+                prefsSummary.innerHTML = summaryHTML;
             }
 
             // --- API DATA FETCHING ---
@@ -263,39 +314,27 @@
                     return { ...region, hourly };
                 } catch (error) {
                     console.error(error);
-                    return { ...region, hourly: [], error: true }; // Handle failed requests
+                    return { ...region, hourly: [], error: true };
                 }
             }
 
             function processWeatherData(data) {
+                if (!data.hourly) return [];
                 const { time, temperature_2m, precipitation_probability, weather_code, cloud_cover, wind_speed_10m } = data.hourly;
                 return time.map((t, i) => {
                     const wmoCode = weather_code[i];
                     return {
-                        dateTime: t,
-                        time: dayjs(t).hour(),
-                        temp: Math.round(temperature_2m[i]),
-                        sun: 100 - cloud_cover[i],
-                        cloud: cloud_cover[i],
-                        rain: precipitation_probability[i],
+                        dateTime: t, time: dayjs(t).hour(), temp: Math.round(temperature_2m[i]),
+                        sun: 100 - cloud_cover[i], cloud: cloud_cover[i], rain: precipitation_probability[i],
                         fog: (wmoCode === 45 || wmoCode === 48) ? 100 : 0,
-                        wind: Math.round(wind_speed_10m[i]),
-                        wmoCode: wmoCode
+                        wind: Math.round(wind_speed_10m[i]), wmoCode: wmoCode
                     };
                 });
             }
 
-            // --- CORE LOGIC ---
+            // --- CORE LOGIC & RENDERING (functions remain largely the same) ---
             function updateUI() {
-                const userPreferences = {
-                    date: dateInput.value,
-                    start: parseInt(timeStartSelect.value),
-                    end: parseInt(timeEndSelect.value),
-                    sun: parseInt(sunshinePref.value),
-                    rain: parseInt(rainPref.value),
-                    fog: parseInt(fogPref.value),
-                    wind: parseInt(windPref.value)
-                };
+                const userPreferences = getUserPreferences();
                 
                 if (userPreferences.start >= userPreferences.end) {
                     timeEndSelect.value = (userPreferences.start + 1) % 24;
@@ -321,51 +360,27 @@
             }
 
             function calculateScoreForHours(hours, prefs) {
-                let totalScore = 0;
-                const maxScorePerCategory = 100;
-                const categories = 4;
-
+                let totalScore = 0; const maxScorePerCategory = 100; const categories = 4;
                 const avgSun = hours.reduce((sum, h) => sum + h.sun, 0) / hours.length;
-                const sunScore = Math.max(0, maxScorePerCategory - Math.abs(prefs.sun - avgSun) * 2);
-                totalScore += sunScore;
-
-                const maxRain = Math.max(...hours.map(h => h.rain));
-                const rainScore = maxRain <= prefs.rain ? maxScorePerCategory : 0;
-                totalScore += rainScore;
-                
-                const maxFog = Math.max(...hours.map(h => h.fog));
-                const fogScore = maxFog <= prefs.fog ? maxScorePerCategory : 0;
-                totalScore += fogScore;
-                
-                const maxWind = Math.max(...hours.map(h => h.wind));
-                const windScore = maxWind <= prefs.wind ? maxScorePerCategory : 0;
-                totalScore += windScore;
-
+                totalScore += Math.max(0, maxScorePerCategory - Math.abs(prefs.sun - avgSun) * 2);
+                totalScore += Math.max(...hours.map(h => h.rain)) <= prefs.rain ? maxScorePerCategory : 0;
+                totalScore += Math.max(...hours.map(h => h.fog)) <= prefs.fog ? maxScorePerCategory : 0;
+                totalScore += Math.max(...hours.map(h => h.wind)) <= prefs.wind ? maxScorePerCategory : 0;
                 return Math.round(totalScore / categories);
             }
 
             function calculateBestRegionScore(park, prefs) {
-                let bestScore = -1;
-                let bestRegion = null;
-                let scores = [];
-
+                let bestScore = -1, bestRegion = null, scores = [];
                 park.regions.forEach(region => {
                     if (region.error) return;
                     const score = calculateRegionScore(region, prefs);
                     scores.push(score);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestRegion = region;
-                    }
+                    if (score > bestScore) { bestScore = score; bestRegion = region; }
                 });
-
-                const scoreVariation = scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : 0;
-                const hasSignificantVariation = scoreVariation > 20;
-
+                const hasSignificantVariation = scores.length > 1 ? (Math.max(...scores) - Math.min(...scores)) > 20 : false;
                 return { ...park, bestScore, bestRegion, hasSignificantVariation };
             }
 
-            // --- RENDERING ---
             function renderParkCards(parks, prefs) {
                 parksContainer.innerHTML = '';
                 if (parks.length === 0 && loadingIndicator.style.display === 'none') {
@@ -384,30 +399,20 @@
                         const radius = scoreCircle.r.baseVal.value;
                         const circumference = 2 * Math.PI * radius;
                         const offset = circumference - (park.bestScore / 100) * circumference;
-                        setTimeout(() => {
-                           scoreCircle.style.strokeDashoffset = offset;
-                        }, 100);
+                        setTimeout(() => { scoreCircle.style.strokeDashoffset = offset; }, 100);
                     }
                 });
             }
 
             function getWeatherIcon(wmoCode) {
-                if ([95, 96, 99].includes(wmoCode)) return '⛈️'; // Thunderstorm
-                if ([61, 63, 65, 66, 67, 80, 81, 82].includes(wmoCode)) return '🌧️'; // Rain
-                if ([51, 53, 55, 56, 57].includes(wmoCode)) return '🌦️'; // Drizzle
-                if ([71, 73, 75, 77, 85, 86].includes(wmoCode)) return '❄️'; // Snow
-                if ([45, 48].includes(wmoCode)) return '🌫️'; // Fog
-                if (wmoCode === 3) return '☁️'; // Overcast
-                if (wmoCode === 2) return '🌥️'; // Partly cloudy
-                if (wmoCode === 1) return '🌤️'; // Mainly clear
-                if (wmoCode === 0) return '☀️'; // Clear sky
-                return '❓';
+                if ([95, 96, 99].includes(wmoCode)) return '⛈️'; if ([61, 63, 65, 66, 67, 80, 81, 82].includes(wmoCode)) return '🌧️';
+                if ([51, 53, 55, 56, 57].includes(wmoCode)) return '🌦️'; if ([71, 73, 75, 77, 85, 86].includes(wmoCode)) return '❄️';
+                if ([45, 48].includes(wmoCode)) return '🌫️'; if (wmoCode === 3) return '☁️'; if (wmoCode === 2) return '🌥️';
+                if (wmoCode === 1) return '🌤️'; if (wmoCode === 0) return '☀️'; return '❓';
             }
 
             function generateCardHTML(park, prefs) {
                 const { bestRegion, bestScore, hasSignificantVariation } = park;
-                if (!bestRegion) return '';
-
                 const relevantHours = getRelevantHours(bestRegion.hourly, prefs);
                 if (relevantHours.length === 0) return '';
 
@@ -416,148 +421,37 @@
                 const maxFog = Math.max(...relevantHours.map(h => h.fog));
                 const maxWind = Math.max(...relevantHours.map(h => h.wind));
 
-                const hourlyForecastHTML = relevantHours.map(h => `
-                    <div class="text-center flex-shrink-0 w-16">
-                        <div class="text-sm text-slate-500">${dayjs(h.dateTime).format('hA')}</div>
-                        <div class="text-2xl">${getWeatherIcon(h.wmoCode)}</div>
-                        <div class="text-sm font-medium">${h.temp}°</div>
-                    </div>
-                `).join('');
-
+                const hourlyForecastHTML = relevantHours.map(h => `<div class="text-center flex-shrink-0 w-16"><div class="text-sm text-slate-500">${dayjs(h.dateTime).format('hA')}</div><div class="text-2xl">${getWeatherIcon(h.wmoCode)}</div><div class="text-sm font-medium">${h.temp}°</div></div>`).join('');
                 const scoreColor = bestScore > 80 ? 'stroke-green-500' : bestScore > 60 ? 'stroke-yellow-500' : 'stroke-red-500';
+                const variationHTML = hasSignificantVariation ? `<div class="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded-lg flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Conditions vary in park. Click for details.</span></div>` : '';
 
-                const variationHTML = hasSignificantVariation ? `
-                    <div class="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded-lg flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span>Conditions vary in park. Click for details.</span>
-                    </div>
-                ` : '';
-
-                return `
-                    <div class="p-6">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-xl font-bold text-slate-900">${park.name}</h3>
-                                <p class="text-blue-700 font-semibold text-sm">${bestRegion.name}</p>
-                                ${variationHTML}
-                            </div>
-                            <div class="relative w-20 h-20 flex-shrink-0">
-                                <svg class="w-full h-full" viewBox="0 0 100 100">
-                                    <circle class="text-slate-200" stroke-width="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
-                                    <circle class="match-score-circle ${scoreColor}" stroke-width="10" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" style="stroke-dasharray: 282.6; stroke-dashoffset: 282.6; transform: rotate(-90deg); transform-origin: 50% 50%;" />
-                                </svg>
-                                <div class="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
-                                    <span class="text-2xl font-bold">${bestScore}%</span>
-                                    <span class="text-xs text-slate-500">Match</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="px-6 mb-4 mt-auto">
-                        <p class="text-sm font-medium mb-2">Best Region Hourly Forecast:</p>
-                        <div class="flex overflow-x-auto pb-2 -mx-6 px-6">
-                           ${hourlyForecastHTML || '<p class="text-slate-500">No data for this time.</p>'}
-                        </div>
-                    </div>
-
-                    <div class="px-6 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                        <div class="flex items-center"><span class="text-xl mr-2">☀️</span> <span>${avgSun}% Sun</span></div>
-                        <div class="flex items-center"><span class="text-xl mr-2">💧</span> <span>${maxRain}% Rain</span></div>
-                        <div class="flex items-center"><span class="text-xl mr-2">🌫️</span> <span>${maxFog}% Fog</span></div>
-                        <div class="flex items-center"><span class="text-xl mr-2">💨</span> <span>${maxWind}mph Wind</span></div>
-                    </div>
-                `;
+                return `<div class="p-6"><div class="flex justify-between items-start"><div><h3 class="text-xl font-bold text-slate-900">${park.name}</h3><p class="text-blue-700 font-semibold text-sm">${bestRegion.name}</p>${variationHTML}</div><div class="relative w-20 h-20 flex-shrink-0"><svg class="w-full h-full" viewBox="0 0 100 100"><circle class="text-slate-200" stroke-width="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" /><circle class="match-score-circle ${scoreColor}" stroke-width="10" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" style="stroke-dasharray: 282.6; stroke-dashoffset: 282.6; transform: rotate(-90deg); transform-origin: 50% 50%;" /></svg><div class="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center"><span class="text-2xl font-bold">${bestScore}%</span><span class="text-xs text-slate-500">Match</span></div></div></div></div><div class="px-6 mb-4 mt-auto"><p class="text-sm font-medium mb-2">Best Region Hourly Forecast:</p><div class="flex overflow-x-auto pb-2 -mx-6 px-6">${hourlyForecastHTML || '<p class="text-slate-500">No data for this time.</p>'}</div></div><div class="px-6 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm"><div class="flex items-center"><span class="text-xl mr-2">☀️</span> <span>${avgSun}% Sun</span></div><div class="flex items-center"><span class="text-xl mr-2">💧</span> <span>${maxRain}% Rain</span></div><div class="flex items-center"><span class="text-xl mr-2">🌫️</span> <span>${maxFog}% Fog</span></div><div class="flex items-center"><span class="text-xl mr-2">💨</span> <span>${maxWind}mph Wind</span></div></div>`;
             }
 
-            // --- MODAL LOGIC ---
             function openModal(park, prefs) {
                 modalContent.innerHTML = generateModalHTML(park, prefs);
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                setTimeout(() => {
-                    modal.style.opacity = 1;
-                    modalContent.style.transform = 'scale(1)';
-                }, 10);
-
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                setTimeout(() => { modal.style.opacity = 1; modalContent.style.transform = 'scale(1)'; }, 10);
                 modalContent.querySelector('#modal-close-btn').addEventListener('click', closeModal);
             }
 
             function closeModal() {
-                modal.style.opacity = 0;
-                modalContent.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                }, 300);
+                modal.style.opacity = 0; modalContent.style.transform = 'scale(0.95)';
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
             }
 
             function generateModalHTML(park, prefs) {
-                const mapRegionsHTML = park.regions.map((region, index) => {
-                    const colors = ['#4ade80', '#60a5fa', '#facc15', '#fb923c', '#a78bfa', '#f472b6', '#34d399'];
-                    return `<path d="${region.mapPath}" fill="${colors[index % colors.length]}" class="region-map-path" opacity="0.6" />`;
-                }).join('');
-
+                const mapRegionsHTML = park.regions.map((region, index) => `<path d="${region.mapPath}" fill="${['#4ade80', '#60a5fa', '#facc15', '#fb923c', '#a78bfa', '#f472b6', '#34d399'][index % 7]}" class="region-map-path" opacity="0.6" />`).join('');
                 const regionDetailsHTML = park.regions.map((region, index) => {
                     if (region.error) return `<div class="border-t border-slate-200 pt-4 mt-4"><p class="text-red-500">Could not load weather data for ${region.name}.</p></div>`;
-
                     const score = calculateRegionScore(region, prefs);
                     const scoreColor = score > 80 ? 'text-green-600' : score > 60 ? 'text-yellow-600' : 'text-red-600';
                     const relevantHours = getRelevantHours(region.hourly, prefs);
-                    const hourlyForecastHTML = relevantHours.map(h => `
-                        <div class="text-center flex-shrink-0 w-16 p-2 rounded-lg bg-slate-50">
-                            <div class="text-sm text-slate-500">${dayjs(h.dateTime).format('hA')}</div>
-                            <div class="text-2xl">${getWeatherIcon(h.wmoCode)}</div>
-                            <div class="text-sm font-medium">${h.temp}°</div>
-                        </div>
-                    `).join('');
-
-                    return `
-                        <div class="border-t border-slate-200 pt-4 mt-4">
-                            <div class="flex justify-between items-center">
-                                <h4 class="text-lg font-bold">${region.name}</h4>
-                                <div class="text-right">
-                                    <p class="font-bold text-xl ${scoreColor}">${score}%</p>
-                                    <p class="text-xs text-slate-500">Match Score</p>
-                                </div>
-                            </div>
-                            <div class="mt-2 flex gap-2 overflow-x-auto pb-2">
-                                ${hourlyForecastHTML || '<p class="text-slate-500 text-sm p-2">No data available for this time range.</p>'}
-                            </div>
-                        </div>
-                    `;
+                    const hourlyForecastHTML = relevantHours.map(h => `<div class="text-center flex-shrink-0 w-16 p-2 rounded-lg bg-slate-50"><div class="text-sm text-slate-500">${dayjs(h.dateTime).format('hA')}</div><div class="text-2xl">${getWeatherIcon(h.wmoCode)}</div><div class="text-sm font-medium">${h.temp}°</div></div>`).join('');
+                    return `<div class="border-t border-slate-200 pt-4 mt-4"><div class="flex justify-between items-center"><h4 class="text-lg font-bold">${region.name}</h4><div class="text-right"><p class="font-bold text-xl ${scoreColor}">${score}%</p><p class="text-xs text-slate-500">Match Score</p></div></div><div class="mt-2 flex gap-2 overflow-x-auto pb-2">${hourlyForecastHTML || '<p class="text-slate-500 text-sm p-2">No data available for this time range.</p>'}</div></div>`;
                 }).join('');
 
-                return `
-                    <div class="flex justify-between items-center p-6 border-b border-slate-200 flex-shrink-0">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-900">${park.name}</h2>
-                            <p class="text-slate-600 mt-1">${park.description}</p>
-                        </div>
-                        <button id="modal-close-btn" class="text-slate-400 hover:text-slate-600 text-4xl leading-none">&times;</button>
-                    </div>
-
-                    <div class="flex-grow p-6 overflow-y-auto">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div>
-                                <h3 class="font-bold mb-2">Park Regions Map</h3>
-                                <svg viewBox="0 0 300 100" class="w-full h-auto rounded-lg bg-gray-100 border">
-                                    ${mapRegionsHTML}
-                                </svg>
-                                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm">
-                                    ${park.regions.map((r, i) => {
-                                        const colors = ['#4ade80', '#60a5fa', '#facc15', '#fb923c', '#a78bfa', '#f472b6', '#34d399'];
-                                        return `<span class="flex items-center"><div class="w-3 h-3 rounded-full mr-1.5" style="background-color: ${colors[i % colors.length]}"></div>${r.name}</span>`
-                                    }).join('')}
-                                </div>
-                            </div>
-                            <div>
-                                <h3 class="font-bold mb-2">Regional Forecasts</h3>
-                                ${regionDetailsHTML}
-                            </div>
-                        </div>
-                    </div>
-                `;
+                return `<div class="flex justify-between items-center p-6 border-b border-slate-200 flex-shrink-0"><div><h2 class="text-2xl font-bold text-slate-900">${park.name}</h2><p class="text-slate-600 mt-1">${park.description}</p></div><button id="modal-close-btn" class="text-slate-400 hover:text-slate-600 text-4xl leading-none">&times;</button></div><div class="flex-grow p-6 overflow-y-auto"><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div><h3 class="font-bold mb-2">Park Regions Map</h3><svg viewBox="0 0 300 100" class="w-full h-auto rounded-lg bg-gray-100 border">${mapRegionsHTML}</svg><div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm">${park.regions.map((r, i) => `<span class="flex items-center"><div class="w-3 h-3 rounded-full mr-1.5" style="background-color: ${['#4ade80', '#60a5fa', '#facc15', '#fb923c', '#a78bfa', '#f472b6', '#34d399'][i % 7]}"></div>${r.name}</span>`).join('')}</div></div><div><h3 class="font-bold mb-2">Regional Forecasts</h3>${regionDetailsHTML}</div></div></div>`;
             }
 
             // --- START THE APP ---
