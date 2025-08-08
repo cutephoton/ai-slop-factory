@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INA229 Web USB/Serial Configurator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a more modern look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        .register-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+        .modal-hidden, .log-hidden, .tab-content-hidden {
+            display: none;
+        }
+        .tab-active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tab-inactive {
+            background-color: #374151;
+            color: #d1d5db;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 lg:p-8">
+        <!-- Header Section -->
+        <header class="mb-8 p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-white">INA229 Register Configurator</h1>
+                    <p class="text-gray-400 mt-1">A web-based UI to configure and monitor the INA229 via WebSerial and WebUSB.</p>
+                </div>
+                <div class="flex items-center">
+                    <button id="debugButton" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 mr-4">Debug</button>
+                    <div class="text-right">
+                        <button id="connectButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">Connect</button>
+                        <div id="connectionStatus" class="mt-2 text-sm text-gray-500">Status: Disconnected</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div id="tabContainer" class="hidden">
+            <div class="mb-4 border-b border-gray-700">
+                <nav class="flex space-x-2" aria-label="Tabs">
+                    <button id="configTab" class="tab-active px-4 py-2 text-sm font-medium rounded-t-lg">Configuration</button>
+                    <button id="viewerTab" class="tab-inactive px-4 py-2 text-sm font-medium rounded-t-lg">Viewer</button>
+                </nav>
+            </div>
+        </div>
+        
+        <!-- Connect Message -->
+        <div id="connectMessage" class="text-center py-16 bg-gray-800 rounded-xl border border-gray-700">
+            <h2 class="text-2xl font-semibold text-white">Device Not Connected</h2>
+            <p class="text-gray-400 mt-2">Please connect a device using the button in the top right to begin.</p>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Configuration Tab Content -->
+            <div id="configContent" class="tab-content-hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-3 space-y-8">
+                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Configuration Registers</h2>
+                            <div class="register-grid">
+                                <!-- CONFIG Register -->
+                                <div class="bg-gray-700/50 p-4 rounded-lg">
+                                    <h3 class="font-bold text-lg">CONFIG (0x00)</h3>
+                                    <div class="space-y-3 mt-2">
+                                        <div class="flex items-center justify-between">
+                                            <label for="adcrange" class="text-sm">ADC Range (ADCRANGE)</label>
+                                            <select id="adcrange" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
+                                                <option value="0">±163.84 mV</option>
+                                                <option value="1">±40.96 mV</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="tempcomp" class="text-sm">Temp Comp (TEMPCOMP)</label>
+                                            <input type="checkbox" id="tempcomp" class="form-checkbox h-5 w-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600">
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="convdly" class="text-sm">Conversion Delay (ms)</label>
+                                            <input type="number" id="convdly" min="0" max="510" step="2" value="0" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                        </div>
+                                        <button id="writeConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write CONFIG</button>
+                                        <div class="flex space-x-2">
+                                            <button id="resetDevice" class="w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Device</button>
+                                            <button id="resetAccumulators" class="w-1/2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Acc.</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ADC_CONFIG Register -->
+                                <div class="bg-gray-700/50 p-4 rounded-lg">
+                                    <h3 class="font-bold text-lg">ADC CONFIG (0x01)</h3>
+                                     <div class="space-y-3 mt-2">
+                                        <div class="flex items-center justify-between">
+                                            <label for="mode" class="text-sm">Mode</label>
+                                            <select id="mode" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
+                                                <option value="15">Continuous All</option>
+                                                <option value="11">Continuous Shunt/Bus</option>
+                                                <option value="10">Continuous Shunt</option>
+                                                <option value="9">Continuous Bus</option>
+                                                <option value="7">Triggered All</option>
+                                                <option value="0">Shutdown</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="vshct" class="text-sm">Shunt CT</label>
+                                            <select id="vshct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="vbusct" class="text-sm">Bus CT</label>
+                                            <select id="vbusct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                        </div>
+                                         <div class="flex items-center justify-between">
+                                            <label for="vtct" class="text-sm">Temp CT</label>
+                                            <select id="vtct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="avg" class="text-sm">Averaging</label>
+                                            <select id="avg" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                        </div>
+                                        <button id="writeAdcConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write ADC_CONFIG</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- SHUNT_CAL Register -->
+                                <div class="bg-gray-700/50 p-4 rounded-lg">
+                                    <h3 class="font-bold text-lg">SHUNT CAL (0x02)</h3>
+                                    <p class="text-xs text-gray-400 mb-2">Use helper or enter value directly.</p>
+                                    <div class="space-y-3 mt-2">
+                                        <div class="flex items-center justify-between">
+                                            <label for="rshunt" class="text-sm">R_Shunt (mΩ)</label>
+                                            <input type="number" id="rshunt" value="300" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="maxCurrent" class="text-sm">Max Current (mA)</label>
+                                            <input type="number" id="maxCurrent" value="50" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <label for="shuntCal" class="text-sm font-semibold">SHUNT_CAL Value</label>
+                                            <input type="number" id="shuntCal" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right font-mono">
+                                        </div>
+                                        <button id="writeShuntCal" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write SHUNT_CAL</button>
+                                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
+                                            <label class="text-xs text-gray-400">Calculated LSB</label>
+                                            <span id="currentLsbDisplay" class="text-xs font-mono text-gray-400">0 nA/LSB</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viewer Tab Content -->
+            <div id="viewerContent" class="tab-content-hidden">
+                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-8">
+                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Real-time Plot & Capture</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
+                                <div>
+                                    <label class="text-sm font-medium">Data to Plot:</label>
+                                    <div id="plotSelectContainer" class="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
+                                        <!-- Checkboxes will be injected here -->
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                     <label for="rollingWindow" class="text-sm font-medium">Rolling Window (s):</label>
+                                     <input type="number" id="rollingWindow" value="30" class="w-full mt-1 bg-gray-900 border border-gray-600 text-sm rounded-md p-2">
+                                     <div class="grid grid-cols-3 gap-2 pt-1">
+                                        <button id="startStopPlotButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Start</button>
+                                        <button id="clearPlotButton" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Clear</button>
+                                        <button id="downloadCsvButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Download CSV</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-black rounded-lg p-2">
+                                <canvas id="plotCanvas"></canvas>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mt-4 text-center">
+                                <div>
+                                    <h4 class="text-sm text-gray-400">Y-Axis</h4>
+                                    <div class="flex items-center justify-center mt-1">
+                                        <input id="autoRange" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                                        <label for="autoRange" class="ml-2 text-sm">Auto</label>
+                                    </div>
+                                    <div id="manualRangeContainer" class="hidden flex flex-col space-y-1 mt-1">
+                                        <input type="number" id="yMin" placeholder="Min" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                        <input type="number" id="yMax" placeholder="Max" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                    </div>
+                                </div>
+                                <div><h4 class="text-sm text-gray-400">Current</h4><p id="statCurrent" class="font-mono text-lg">--</p></div>
+                                <div><h4 class="text-sm text-gray-400">Min</h4><p id="statMin" class="font-mono text-lg">--</p></div>
+                                <div><h4 class="text-sm text-gray-400">Max</h4><p id="statMax" class="font-mono text-lg">--</p></div>
+                                <div><h4 class="text-sm text-gray-400">Average</h4><p id="statAvg" class="font-mono text-lg">--</p></div>
+                                <div><h4 class="text-sm text-gray-400">Expected SPS</h4><p id="statExpectedSps" class="font-mono text-lg">--</p></div>
+                                <div><h4 class="text-sm text-gray-400">Actual SPS</h4><p id="statActualSps" class="font-mono text-lg">--</p></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="lg:col-span-1 space-y-8">
+                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
+                                <h2 class="text-2xl font-semibold text-white">Live Data</h2>
+                                <button id="readAllButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm">Read Once (Serial)</button>
+                            </div>
+                            <div id="readout-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <!-- Data fields will be injected here by JS -->
+                            </div>
+                        </section>
+
+                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                             <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Device Info</h2>
+                             <div class="space-y-2 text-sm">
+                                <div class="flex justify-between"><span>Manufacturer ID:</span><span id="manufacturerId" class="font-mono text-gray-400">--</span></div>
+                                <div class="flex justify-between"><span>Device ID:</span><span id="deviceId" class="font-mono text-gray-400">--</span></div>
+                             </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Log/Console Section -->
+        <footer class="mt-8 bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+             <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold">Command Log</h3>
+                <div class="flex items-center">
+                    <input type="checkbox" id="logEnabled" class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                    <label for="logEnabled" class="ml-2 text-sm">Enable Log</label>
+                </div>
+            </div>
+            <div id="logContainer" class="log-hidden">
+                <div id="log" class="bg-black h-40 p-2 rounded-md font-mono text-xs overflow-y-auto text-gray-300"></div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Debug Modal -->
+    <div id="debugModal" class="modal-hidden fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl border border-gray-700">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white">Register Debugger</h2>
+                <button id="closeDebugModal" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center space-x-4 mb-4">
+                    <select id="debugRegisterSelect" class="flex-grow bg-gray-900 border border-gray-600 text-sm rounded-md p-2"></select>
+                    <button id="readDebugRegister" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md">Read</button>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold mb-2">Raw Value</h3>
+                    <p id="debugRawValue" class="font-mono text-cyan-400 text-2xl">0x0000</p>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-semibold mb-2">Decoded Fields</h3>
+                    <div id="debugDecodedFields" class="space-y-2 text-sm font-mono bg-gray-900 p-4 rounded-md h-64 overflow-y-auto">
+                        <p class="text-gray-500">Select a register and click "Read".</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    // This is the main UI script. It communicates with INA229_worker.js
+    // All direct device communication is handled by the worker.
+
+    // DOM Elements
+    const connectButton = document.getElementById('connectButton');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const logElement = document.getElementById('log');
+    const logContainer = document.getElementById('logContainer');
+    const logEnabledCheckbox = document.getElementById('logEnabled');
+    const readAllButton = document.getElementById('readAllButton');
+    
+    // Tab Elements
+    const tabContainer = document.getElementById('tabContainer');
+    const connectMessage = document.getElementById('connectMessage');
+    const configTab = document.getElementById('configTab');
+    const viewerTab = document.getElementById('viewerTab');
+    const configContent = document.getElementById('configContent');
+    const viewerContent = document.getElementById('viewerContent');
+
+    // Config elements
+    const adcrangeSelect = document.getElementById('adcrange');
+    const tempcompCheckbox = document.getElementById('tempcomp');
+    const convdlyInput = document.getElementById('convdly');
+    const writeConfigButton = document.getElementById('writeConfig');
+    const resetDeviceButton = document.getElementById('resetDevice');
+    const resetAccumulatorsButton = document.getElementById('resetAccumulators');
+    
+    // ADC Config elements
+    const modeSelect = document.getElementById('mode');
+    const vshctSelect = document.getElementById('vshct');
+    const vbusctSelect = document.getElementById('vbusct');
+    const vtctSelect = document.getElementById('vtct');
+    const avgSelect = document.getElementById('avg');
+    const writeAdcConfigButton = document.getElementById('writeAdcConfig');
+
+    // Shunt Cal elements
+    const rshuntInput = document.getElementById('rshunt');
+    const maxCurrentInput = document.getElementById('maxCurrent');
+    const shuntCalInput = document.getElementById('shuntCal');
+    const writeShuntCalButton = document.getElementById('writeShuntCal');
+    const currentLsbDisplay = document.getElementById('currentLsbDisplay');
+    
+    // Readout elements
+    const readoutGrid = document.getElementById('readout-grid');
+    const manufacturerIdEl = document.getElementById('manufacturerId');
+    const deviceIdEl = document.getElementById('deviceId');
+
+    // Debug Modal Elements
+    const debugButton = document.getElementById('debugButton');
+    const debugModal = document.getElementById('debugModal');
+    const closeDebugModal = document.getElementById('closeDebugModal');
+    const debugRegisterSelect = document.getElementById('debugRegisterSelect');
+    const readDebugRegister = document.getElementById('readDebugRegister');
+    const debugRawValue = document.getElementById('debugRawValue');
+    const debugDecodedFields = document.getElementById('debugDecodedFields');
+
+    // Plotting Elements
+    const plotSelectContainer = document.getElementById('plotSelectContainer');
+    const startStopPlotButton = document.getElementById('startStopPlotButton');
+    const clearPlotButton = document.getElementById('clearPlotButton');
+    const plotCanvas = document.getElementById('plotCanvas');
+    const autoRangeCheckbox = document.getElementById('autoRange');
+    const manualRangeContainer = document.getElementById('manualRangeContainer');
+    const yMinInput = document.getElementById('yMin');
+    const yMaxInput = document.getElementById('yMax');
+    const statCurrent = document.getElementById('statCurrent');
+    const statMin = document.getElementById('statMin');
+    const statMax = document.getElementById('statMax');
+    const statAvg = document.getElementById('statAvg');
+    const statExpectedSps = document.getElementById('statExpectedSps');
+    const statActualSps = document.getElementById('statActualSps');
+    const downloadCsvButton = document.getElementById('downloadCsvButton');
+    const rollingWindowInput = document.getElementById('rollingWindow');
+
+    // Web Communication State
+    let worker = null;
+    let lastDebugRead = { addr: null, value: null };
+    let current_lsb = 0.05 / Math.pow(2, 19); // Default based on 50mA
+    let isPlotting = false;
+    let plotChart;
+    let plotData = {};
+    let plotStartTime = 0;
+    let sampleCountForSps = 0;
+    let lastSpsUpdateTime = 0;
+    let renderLoopId;
+
+    // INA229 Constants and Register Map
+    const registers = {
+        CONFIG: 0x00, ADC_CONFIG: 0x01, SHUNT_CAL: 0x02, SHUNT_TEMPCO: 0x03, VSHUNT: 0x04,
+        VBUS: 0x05, DIETEMP: 0x06, CURRENT: 0x07, POWER: 0x08, ENERGY: 0x09, CHARGE: 0x0A,
+        DIAG_ALRT: 0x0B, SOVL: 0x0C, SUVL: 0x0D, BOVL: 0x0E, BUVL: 0x0F, TEMP_LIMIT: 0x10,
+        PWR_LIMIT: 0x11, MANUFACTURER_ID: 0x3E, DEVICE_ID: 0x3F,
+    };
+
+    const plottableRegisters = [
+        { name: 'VSHUNT', addr: registers.VSHUNT, unit: 'V', bits: 24, signed: true, color: '#34d399' },
+        { name: 'VBUS', addr: registers.VBUS, unit: 'V', bits: 24, signed: false, color: '#60a5fa' },
+        { name: 'DIETEMP', addr: registers.DIETEMP, unit: '°C', bits: 16, signed: true, color: '#f87171' },
+        { name: 'CURRENT', addr: registers.CURRENT, unit: 'A', bits: 24, signed: true, color: '#facc15' },
+        { name: 'POWER', addr: registers.POWER, unit: 'W', bits: 24, signed: false, color: '#c084fc' },
+    ];
+    const allRegisters = [ ...plottableRegisters,
+        { name: 'ENERGY', addr: registers.ENERGY, unit: 'J', bits: 40, signed: false },
+        { name: 'CHARGE', addr: registers.CHARGE, unit: 'C', bits: 40, signed: true },
+        { name: 'DIAG_ALRT', addr: registers.DIAG_ALRT, unit: '', bits: 16, signed: false },
+    ];
+    
+    const conversionTimes = [
+        { text: '50 µs', value: 0, time: 50e-6 }, { text: '84 µs', value: 1, time: 84e-6 }, { text: '150 µs', value: 2, time: 150e-6 },
+        { text: '280 µs', value: 3, time: 280e-6 }, { text: '540 µs', value: 4, time: 540e-6 }, { text: '1.052 ms', value: 5, time: 1.052e-3 },
+        { text: '2.074 ms', value: 6, time: 2.074e-3 }, { text: '4.120 ms', value: 7, time: 4.120e-3 }
+    ];
+
+    const averagingCounts = [
+        { text: '1', value: 0, count: 1 }, { text: '4', value: 1, count: 4 }, { text: '16', value: 2, count: 16 },
+        { text: '64', value: 3, count: 64 }, { text: '128', value: 4, count: 128 }, { text: '256', value: 5, count: 256 },
+        { text: '512', value: 6, count: 512 }, { text: '1024', value: 7, count: 1024 }
+    ];
+
+    function populateSelect(selectElement, options, defaultValue) {
+        selectElement.innerHTML = '';
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.text;
+            if (opt.value === defaultValue) option.selected = true;
+            selectElement.appendChild(option);
+        });
+    }
+
+    function initializeUI() {
+        populateSelect(vshctSelect, conversionTimes, 5);
+        populateSelect(vbusctSelect, conversionTimes, 5);
+        populateSelect(vtctSelect, conversionTimes, 5);
+        populateSelect(avgSelect, averagingCounts, 0);
+        readoutGrid.innerHTML = allRegisters.map(reg => `<div class="bg-gray-700/50 p-3 rounded-lg"><div class="flex justify-between items-baseline"><span class="text-sm text-gray-400">${reg.name}</span><div class="text-right"><span id="readout-${reg.name}" class="text-xl font-mono font-semibold text-cyan-400">0.000</span><span id="unit-${reg.name}" class="ml-1 text-lg font-mono text-cyan-400">${reg.unit}</span></div></div></div>`).join('');
+        debugRegisterSelect.innerHTML = Object.keys(registers).map(name => `<option value="${registers[name]}">${name} (0x${registers[name].toString(16).padStart(2, '0')})</option>`).join('');
+        
+        plotSelectContainer.innerHTML = plottableRegisters.map(reg => `
+            <div class="flex items-center">
+                <input type="checkbox" id="plot-check-${reg.name}" data-name="${reg.name}" class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                <label for="plot-check-${reg.name}" class="ml-2 text-sm">${reg.name}</label>
+            </div>
+        `).join('');
+        
+        document.getElementById('plot-check-CURRENT').checked = true;
+        document.getElementById('plot-check-POWER').checked = true;
+        document.getElementById('plot-check-VBUS').checked = true;
+
+        initializePlot();
+        calculateShuntCal();
+    }
+
+    function log(message, type = 'system') {
+        if (!logEnabledCheckbox.checked) return;
+        const color = type === 'in' ? 'text-green-400' : type === 'out' ? 'text-yellow-400' : 'text-blue-400';
+        const prefix = type === 'in' ? 'IN <' : type === 'out' ? 'OUT >' : 'SYS -';
+        logElement.innerHTML += `<div class="${color}">${prefix} ${message}</div>`;
+        logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    async function handleConnect() {
+        if (worker) {
+            await disconnect();
+            return;
+        }
+
+        try {
+            await navigator.serial.requestPort();
+            await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1cbe, productId: 0x00ab }] });
+
+            worker = new Worker('INA229_worker.js');
+            worker.onmessage = handleWorkerMessage;
+            worker.postMessage({ type: 'connect' });
+
+        } catch (error) {
+            log(`Connection failed: ${error.message}`, 'system');
+            connectionStatus.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    async function disconnect() {
+        if (worker) {
+            worker.postMessage({ type: 'disconnect' });
+            worker.terminate();
+            worker = null;
+        }
+        
+        isPlotting = false;
+        cancelAnimationFrame(renderLoopId);
+        startStopPlotButton.textContent = 'Start';
+        startStopPlotButton.classList.replace('bg-red-600', 'bg-green-600');
+        startStopPlotButton.classList.replace('hover:bg-red-700', 'hover:bg-green-700');
+        
+        connectionStatus.textContent = 'Status: Disconnected';
+        connectButton.textContent = 'Connect';
+        connectButton.classList.replace('bg-red-600', 'bg-blue-600');
+        connectButton.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+        log('All devices disconnected.', 'system');
+        
+        tabContainer.classList.add('hidden');
+        connectMessage.classList.remove('hidden');
+    }
+
+    function handleWorkerMessage(event) {
+        const { type, payload } = event.data;
+        switch (type) {
+            case 'status':
+                handleStatusUpdate(payload);
+                break;
+            case 'log':
+                log(payload.message, payload.direction);
+                break;
+            case 'processed-register-data':
+                if (lastDebugRead.addr === payload.address) {
+                    lastDebugRead.value = payload.rawValue;
+                    updateDebugModal(payload.address, payload.rawValue);
+                } else {
+                    updateRegisterValue(payload.address, payload.rawValue);
+                }
+                break;
+            case 'processed-bulk-data':
+                payload.forEach(update => {
+                    updateRegisterValue(update.address, update.rawValue);
+                });
+                break;
+        }
+    }
+
+     function handleStatusUpdate(status) {
+        connectionStatus.textContent = `Status: ${status}`;
+        if (status === 'Connected') {
+            connectButton.textContent = 'Disconnect';
+            connectButton.classList.replace('bg-blue-600', 'bg-red-600');
+            connectButton.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+            connectMessage.classList.add('hidden');
+            tabContainer.classList.remove('hidden');
+            switchTab('config');
+            writeCommand('setdevice 1');
+            readRegister(registers.MANUFACTURER_ID);
+            readRegister(registers.DEVICE_ID);
+        }
+    }
+
+    function writeCommand(command) {
+        if (!worker) { log('Cannot write: not connected.', 'system'); return; }
+        worker.postMessage({ type: 'write', command });
+    }
+
+    function formatValue(value, baseUnit) {
+        let num = Number(value);
+        if (isNaN(num)) return { value: 'N/A', unit: baseUnit };
+        if (num === 0) return { value: '0.000', unit: baseUnit };
+        const absNum = Math.abs(num);
+        if (absNum >= 1e6) return { value: (num / 1e6).toPrecision(4), unit: 'M' + baseUnit };
+        if (absNum >= 1e3) return { value: (num / 1e3).toPrecision(4), unit: 'k' + baseUnit };
+        if (absNum < 1e-6) return { value: (num * 1e9).toPrecision(4), unit: 'n' + baseUnit };
+        if (absNum < 1e-3) return { value: (num * 1e6).toPrecision(4), unit: 'µ' + baseUnit };
+        if (absNum < 1) return { value: (num * 1e3).toPrecision(4), unit: 'm' + baseUnit };
+        return { value: num.toPrecision(4), unit: baseUnit };
+    }
+    
+    function convertRawValue(addr, rawValue, bits, signed) {
+        let value = rawValue;
+        if (addr === registers.VSHUNT || addr === registers.VBUS || addr === registers.CURRENT) {
+            value = value >> 4;
+        }
+        const effectiveBits = (addr === registers.VSHUNT || addr === registers.VBUS || addr === registers.CURRENT) ? 20 : bits;
+        if (signed) {
+            const signBit = 1 << (effectiveBits - 1);
+            if (value & signBit) {
+                value = (bits > 32) ? BigInt(value) - (BigInt(1) << BigInt(effectiveBits)) : value - (1 << effectiveBits);
+            }
+        }
+        const finalValue = (bits > 32) ? BigInt(value) : Number(value);
+        switch (addr) {
+            case registers.VSHUNT: return finalValue * (adcrangeSelect.value === '0' ? 312.5e-9 : 78.125e-9);
+            case registers.VBUS: return finalValue * 195.3125e-6;
+            case registers.DIETEMP: return finalValue * 7.8125e-3;
+            case registers.CURRENT: return finalValue * current_lsb;
+            case registers.POWER: return Number(rawValue) * 3.2 * current_lsb;
+            case registers.ENERGY: return Number(BigInt(rawValue)) * 51.2 * current_lsb;
+            case registers.CHARGE:
+                const chargeSignBit = BigInt(1) << BigInt(39);
+                let chargeVal = BigInt(rawValue);
+                if(chargeVal & chargeSignBit) chargeVal -= (BigInt(1) << BigInt(40));
+                return Number(chargeVal) * current_lsb;
+            case registers.DIAG_ALRT: return `0x${rawValue.toString(16).padStart(4, '0')}`;
+            case registers.MANUFACTURER_ID: return String.fromCharCode((rawValue >> 8) & 0xFF) + String.fromCharCode(rawValue & 0xFF);
+            case registers.DEVICE_ID: return `0x${((rawValue >> 4) & 0xFFF).toString(16)} (rev ${rawValue & 0xF})`;
+            default: return rawValue;
+        }
+    }
+
+    function updateRegisterValue(addr, value) {
+        const regInfo = allRegisters.find(r => r.addr === addr);
+        if (regInfo) {
+            const converted = convertRawValue(addr, value, regInfo.bits, regInfo.signed);
+            
+            const displayEl = document.getElementById(`readout-${regInfo.name}`);
+            const unitEl = document.getElementById(`unit-${regInfo.name}`);
+            if (displayEl && unitEl) {
+                if (typeof converted === 'string') {
+                    displayEl.textContent = converted;
+                    unitEl.textContent = '';
+                } else if (regInfo.name === 'DIETEMP') {
+                    displayEl.textContent = converted.toFixed(2);
+                    unitEl.textContent = regInfo.unit;
+                } else {
+                    const formatted = formatValue(converted, regInfo.unit);
+                    displayEl.textContent = formatted.value;
+                    unitEl.textContent = formatted.unit;
+                }
+            }
+
+            if (isPlotting) {
+                addDataToChart(regInfo.name, converted);
+                if (addr === registers.VSHUNT) { // Use VSHUNT as sample counter trigger
+                    sampleCountForSps++;
+                }
+            }
+        } else if (addr === registers.MANUFACTURER_ID) {
+            manufacturerIdEl.textContent = convertRawValue(addr, value, 16, false);
+        } else if (addr === registers.DEVICE_ID) {
+            deviceIdEl.textContent = convertRawValue(addr, value, 16, false);
+        }
+    }
+
+    async function readRegister(addr) {
+        writeCommand(`rreg ${addr.toString(16)}`);
+    }
+
+    async function writeRegister(addr, value) {
+        writeCommand(`wreg ${addr.toString(16)} ${value.toString(16)}`);
+    }
+
+    async function readAllRegisters() {
+        if (!worker) return;
+        for (const reg of allRegisters) {
+            readRegister(reg.addr);
+            await new Promise(resolve => setTimeout(resolve, 30));
+        }
+    }
+
+    function calculateShuntCal() {
+        const rShunt = parseFloat(rshuntInput.value) / 1000;
+        const maxCurrent = parseFloat(maxCurrentInput.value) / 1000;
+        if (isNaN(rShunt) || isNaN(maxCurrent) || maxCurrent <= 0) {
+            shuntCalInput.value = 'N/A';
+            return;
+        }
+        current_lsb = maxCurrent / Math.pow(2, 19);
+        let shuntCalValue = 13107.2 * 1e6 * current_lsb * rShunt;
+        if (adcrangeSelect.value === '1') shuntCalValue *= 4;
+        shuntCalInput.value = Math.round(shuntCalValue);
+        const formattedLsb = formatValue(current_lsb, 'A');
+        currentLsbDisplay.textContent = `${formattedLsb.value} ${formattedLsb.unit}/LSB`;
+    }
+    
+    function updateDebugModal(addr, value) {
+        const regSize = (addr === registers.ENERGY || addr === registers.CHARGE) ? 40 : (addr === registers.VSHUNT || addr === registers.VBUS || addr === registers.CURRENT || addr === registers.POWER) ? 24 : 16;
+        debugRawValue.textContent = `0x${value.toString(16).padStart(regSize / 4, '0')}`;
+        debugDecodedFields.innerHTML = decodeRegisterFields(addr, value);
+    }
+
+    function decodeRegisterFields(addr, value) {
+        let html = '';
+        const addField = (bitRange, name, fieldValue, description) => {
+            html += `<div class="grid grid-cols-4 gap-2 items-start"><span class="text-gray-400">${bitRange}</span><span class="text-yellow-400">${name}</span><span class="text-cyan-400 col-span-2">${fieldValue} - ${description}</span></div>`;
+        };
+        switch(addr) {
+            case registers.CONFIG:
+                addField('15', 'RST', (value >> 15) & 1, ((value >> 15) & 1) ? 'Reset Active' : 'Normal');
+                addField('14', 'RSTACC', (value >> 14) & 1, ((value >> 14) & 1) ? 'Reset Accumulators' : 'Normal');
+                addField('13-6', 'CONVDLY', (value >> 6) & 0xFF, `${((value >> 6) & 0xFF) * 2} ms delay`);
+                addField('5', 'TEMPCOMP', (value >> 5) & 1, ((value >> 5) & 1) ? 'Enabled' : 'Disabled');
+                addField('4', 'ADCRANGE', (value >> 4) & 1, ((value >> 4) & 1) ? '±40.96 mV' : '±163.84 mV');
+                break;
+            case registers.ADC_CONFIG:
+                const mode = (value >> 12) & 0xF;
+                const modes = ['Shutdown', 'Trig Bus', 'Trig Shunt', 'Trig Shunt,Bus', 'Trig Temp', 'Trig Temp,Bus', 'Trig Temp,Shunt', 'Trig All', 'Shutdown', 'Cont Bus', 'Cont Shunt', 'Cont Shunt,Bus', 'Cont Temp', 'Cont Temp,Bus', 'Cont Temp,Shunt', 'Cont All'];
+                addField('15-12', 'MODE', mode, modes[mode]);
+                const vbusCt = (value >> 9) & 0x7; addField('11-9', 'VBUSCT', vbusCt, conversionTimes[vbusCt].text);
+                const vshCt = (value >> 6) & 0x7; addField('8-6', 'VSHCT', vshCt, conversionTimes[vshCt].text);
+                const vtCt = (value >> 3) & 0x7; addField('5-3', 'VTCT', vtCt, conversionTimes[vtCt].text);
+                const avg = value & 0x7; addField('2-0', 'AVG', avg, `${averagingCounts[avg].text} samples`);
+                break;
+            case registers.DIAG_ALRT:
+                 addField('15', 'ALATCH', (value >> 15) & 1, ((value >> 15) & 1) ? 'Latched' : 'Transparent');
+                 addField('14', 'CNVR', (value >> 14) & 1, ((value >> 14) & 1) ? 'ALERT on CNVRF' : 'Disabled');
+                 addField('13', 'SLOWALERT', (value >> 13) & 1, ((value >> 13) & 1) ? 'On Averaged Data' : 'On ADC Data');
+                 addField('12', 'APOL', (value >> 12) & 1, ((value >> 12) & 1) ? 'Active-High' : 'Active-Low');
+                 addField('11', 'ENERGYOF', (value >> 11) & 1, ((value >> 11) & 1) ? 'Overflow!' : 'OK');
+                 addField('10', 'CHARGEOF', (value >> 10) & 1, ((value >> 10) & 1) ? 'Overflow!' : 'OK');
+                 addField('9', 'MATHOF', (value >> 9) & 1, ((value >> 9) & 1) ? 'Overflow!' : 'OK');
+                 addField('7', 'TMPOL', (value >> 7) & 1, ((value >> 7) & 1) ? 'Temp Over-Limit' : 'OK');
+                 addField('6', 'SHNTOL', (value >> 6) & 1, ((value >> 6) & 1) ? 'Shunt Over-Limit' : 'OK');
+                 addField('5', 'SHNTUL', (value >> 5) & 1, ((value >> 5) & 1) ? 'Shunt Under-Limit' : 'OK');
+                 addField('4', 'BUSOL', (value >> 4) & 1, ((value >> 4) & 1) ? 'Bus Over-Limit' : 'OK');
+                 addField('3', 'BUSUL', (value >> 3) & 1, ((value >> 3) & 1) ? 'Bus Under-Limit' : 'OK');
+                 addField('2', 'POL', (value >> 2) & 1, ((value >> 2) & 1) ? 'Power Over-Limit' : 'OK');
+                 addField('1', 'CNVRF', (value >> 1) & 1, ((value >> 1) & 1) ? 'Conversion Ready' : 'Not Ready');
+                 addField('0', 'MEMSTAT', value & 1, (value & 1) ? 'Memory OK' : 'Checksum Error!');
+                break;
+            default:
+                const regInfo = allRegisters.find(r => r.addr === addr) || { unit: '', bits: 16, signed: false};
+                const converted = convertRawValue(addr, value, regInfo.bits, regInfo.signed);
+                const formatted = (typeof converted === 'string') ? {value: converted, unit: ''} : formatValue(converted, regInfo.unit);
+                html = `<p class="text-2xl">${formatted.value} <span class="text-lg">${formatted.unit}</span></p>`;
+        }
+        return html;
+    }
+
+    // --- Plotting Logic ---
+    function initializePlot() {
+        plottableRegisters.forEach(reg => { plotData[reg.name] = []; });
+        const ctx = plotCanvas.getContext('2d');
+        plotChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: [] },
+            options: {
+                animation: false,
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: 'Time (s)', color: '#9ca3af' }, ticks: { color: '#9ca3af' } },
+                },
+                plugins: { legend: { labels: { color: '#e5e7eb' } } }
+            }
+        });
+    }
+
+    function addDataToChart(seriesName, value) {
+        if (!plotData[seriesName]) return;
+        const series = plotData[seriesName];
+        const timestamp = (performance.now() - plotStartTime) / 1000;
+        series.push({x: timestamp, y: value});
+    }
+    
+    let lastRenderTime = 0;
+    function renderLoop(timestamp) {
+        if (!isPlotting) return;
+        
+        if (timestamp - lastRenderTime > (1000 / 30)) { // ~30 FPS
+            lastRenderTime = timestamp;
+            const now = (performance.now() - plotStartTime) / 1000;
+            const window = parseFloat(rollingWindowInput.value);
+            plotChart.options.scales.x.min = now < window ? 0 : now - window;
+            plotChart.options.scales.x.max = now < window ? window : now;
+
+            plotChart.update();
+
+            const firstSelected = document.querySelector('#plotSelectContainer input:checked');
+            if (firstSelected) {
+                const seriesName = firstSelected.dataset.name;
+                updateStats(seriesName, plotData[seriesName]);
+            }
+            
+            const elapsedSeconds = (performance.now() - lastSpsUpdateTime) / 1000;
+            if (elapsedSeconds >= 1) {
+                const actualSps = sampleCountForSps / elapsedSeconds;
+                statActualSps.textContent = actualSps.toFixed(1);
+                lastSpsUpdateTime = performance.now();
+                sampleCountForSps = 0;
+            }
+        }
+        
+        renderLoopId = requestAnimationFrame(renderLoop);
+    }
+
+    function updateStats(seriesName, series) {
+        if (series.length === 0) {
+            [statCurrent, statMin, statMax, statAvg].forEach(el => el.textContent = '--');
+            return;
+        }
+        const values = series.map(p => p.y);
+        const current = values[values.length - 1];
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        const reg = plottableRegisters.find(r => r.name === seriesName);
+        const unit = reg ? reg.unit : '';
+
+        statCurrent.textContent = formatValue(current, unit).value + ' ' + formatValue(current, unit).unit;
+        statMin.textContent = formatValue(min, unit).value + ' ' + formatValue(min, unit).unit;
+        statMax.textContent = formatValue(max, unit).value + ' ' + formatValue(max, unit).unit;
+        statAvg.textContent = formatValue(avg, unit).value + ' ' + formatValue(avg, unit).unit;
+    }
+
+    function clearPlot() {
+        plottableRegisters.forEach(reg => { plotData[reg.name] = []; });
+        plotChart.data.datasets.forEach(ds => ds.data = []);
+        plotChart.update();
+        updateStats(plotSelectContainer.querySelector('input:checked')?.dataset.name, []);
+        statExpectedSps.textContent = '--';
+        statActualSps.textContent = '--';
+    }
+    
+    function calculateTimerPeriod() {
+        const mode = parseInt(modeSelect.value, 10);
+        let totalConvTime = 0;
+        
+        if ([1, 3, 5, 7, 9, 11, 13, 15].includes(mode)) totalConvTime += conversionTimes[parseInt(vbusctSelect.value)].time;
+        if ([2, 3, 6, 7, 10, 11, 14, 15].includes(mode)) totalConvTime += conversionTimes[parseInt(vshctSelect.value)].time;
+        if ([4, 5, 6, 7, 12, 13, 14, 15].includes(mode)) totalConvTime += conversionTimes[parseInt(vtctSelect.value)].time;
+        
+        const avgCount = averagingCounts[parseInt(avgSelect.value)].count;
+        return (totalConvTime * avgCount) * 1e6; // return in µs
+    }
+
+    // --- Tab Logic ---
+    async function switchTab(tabName) {
+        if (tabName === 'config') {
+            configTab.classList.replace('tab-inactive', 'tab-active');
+            viewerTab.classList.replace('tab-active', 'tab-inactive');
+            configContent.classList.remove('tab-content-hidden');
+            viewerContent.classList.add('tab-content-hidden');
+            if (isPlotting) {
+                await startStopPlotButton.click();
+            }
+        } else { // viewer
+            viewerTab.classList.replace('tab-inactive', 'tab-active');
+            configTab.classList.replace('tab-active', 'tab-inactive');
+            viewerContent.classList.remove('tab-content-hidden');
+            configContent.classList.add('tab-content-hidden');
+            if (!isPlotting) {
+                await startStopPlotButton.click();
+            }
+        }
+    }
+
+    // --- Event Listeners ---
+    connectButton.addEventListener('click', handleConnect);
+    readAllButton.addEventListener('click', readAllRegisters);
+    logEnabledCheckbox.addEventListener('change', () => logContainer.classList.toggle('log-hidden'));
+    configTab.addEventListener('click', () => switchTab('config'));
+    viewerTab.addEventListener('click', () => switchTab('viewer'));
+    
+    startStopPlotButton.addEventListener('click', async () => {
+        if (isPlotting) { // Stop
+            isPlotting = false;
+            stopUsbLoop = true;
+            cancelAnimationFrame(renderLoopId);
+            worker.postMessage({type: 'stop-stream'});
+            startStopPlotButton.textContent = 'Start';
+            startStopPlotButton.classList.replace('bg-red-600', 'bg-green-600');
+            startStopPlotButton.classList.replace('hover:bg-red-700', 'hover:bg-green-700');
+            statExpectedSps.textContent = '--';
+            statActualSps.textContent = '--';
+        } else { // Start
+            if (!worker) { log('Worker not ready.', 'system'); return; }
+            const selectedSeries = Array.from(plotSelectContainer.querySelectorAll('input:checked')).map(cb => cb.dataset.name);
+            if (selectedSeries.length === 0) { alert('Please select at least one data series to plot.'); return; }
+            
+            clearPlot();
+            isPlotting = true;
+            plotStartTime = performance.now();
+            lastSpsUpdateTime = performance.now();
+            sampleCountForSps = 0;
+            
+            plotChart.data.datasets = [];
+            plotChart.options.scales = { x: { type: 'linear', title: { display: true, text: 'Time (s)', color: '#9ca3af' }, ticks: { color: '#9ca3af' } } };
+            const yAxes = {};
+            selectedSeries.forEach((name) => {
+                const reg = plottableRegisters.find(r => r.name === name);
+                plotData[name] = [];
+                const axisId = `y-${reg.unit}`;
+                
+                plotChart.data.datasets.push({
+                    label: name,
+                    data: plotData[name],
+                    borderColor: reg.color,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    yAxisID: axisId,
+                });
+
+                if (!yAxes[axisId]) {
+                    yAxes[axisId] = {
+                        type: 'linear',
+                        position: Object.keys(yAxes).length > 0 ? 'right' : 'left',
+                        grid: { drawOnChartArea: Object.keys(yAxes).length === 0 },
+                        title: { display: true, text: `${reg.name} (${reg.unit})`, color: reg.color },
+                        ticks: { color: reg.color, callback: (value) => {
+                            const formatted = formatValue(value, reg.unit);
+                            return `${formatted.value} ${formatted.unit}`;
+                        }}
+                    };
+                }
+            });
+            plotChart.options.scales = { ...plotChart.options.scales, ...yAxes };
+            
+            const timerPeriod = Math.max(1000, calculateTimerPeriod());
+            const expectedSps = 1e6 / timerPeriod;
+            statExpectedSps.textContent = expectedSps.toFixed(1);
+
+            const collectFlags = 255;
+            worker.postMessage({type: 'start-stream', command: `collect ${timerPeriod} ${collectFlags} 1 1`});
+            
+            renderLoopId = requestAnimationFrame(renderLoop);
+            
+            startStopPlotButton.textContent = 'Stop';
+            startStopPlotButton.classList.replace('bg-green-600', 'bg-red-600');
+            startStopPlotButton.classList.replace('hover:bg-green-700', 'hover:bg-red-700');
+        }
+    });
+    
+    clearPlotButton.addEventListener('click', clearPlot);
+
+    autoRangeCheckbox.addEventListener('change', () => {
+        manualRangeContainer.classList.toggle('hidden', autoRangeCheckbox.checked);
+        Object.keys(plotChart.options.scales).forEach(axisId => {
+            if (axisId.startsWith('y-')) {
+                if (autoRangeCheckbox.checked) {
+                    delete plotChart.options.scales[axisId].min;
+                    delete plotChart.options.scales[axisId].max;
+                } else {
+                    plotChart.options.scales[axisId].min = parseFloat(yMinInput.value) || null;
+                    plotChart.options.scales[axisId].max = parseFloat(yMaxInput.value) || null;
+                }
+            }
+        });
+        plotChart.update();
+    });
+    [yMinInput, yMaxInput].forEach(el => el.addEventListener('input', () => { if (!autoRangeCheckbox.checked) autoRangeCheckbox.dispatchEvent(new Event('change')); }));
+
+    downloadCsvButton.addEventListener('click', () => {
+        const selectedSeriesNames = Array.from(plotSelectContainer.querySelectorAll('input:checked')).map(cb => cb.dataset.name);
+        if (selectedSeriesNames.length === 0 || plotData[selectedSeriesNames[0]].length === 0) {
+            alert("No data to download."); return;
+        }
+
+        let csvContent = `Timestamp (s),${selectedSeriesNames.join(',')}\n`;
+        const masterSeries = plotData[selectedSeriesNames[0]];
+
+        masterSeries.forEach((point, index) => {
+            let row = [point.x.toFixed(4)];
+            selectedSeriesNames.forEach(name => {
+                const series = plotData[name];
+                row.push(series[index] ? series[index].y : '');
+            });
+            csvContent += row.join(',') + '\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ina229_capture.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+    
+    [rshuntInput, maxCurrentInput, adcrangeSelect].forEach(el => el.addEventListener('input', calculateShuntCal));
+    writeShuntCalButton.addEventListener('click', () => { const val = parseInt(shuntCalInput.value, 10); if (!isNaN(val)) writeRegister(registers.SHUNT_CAL, val); });
+    writeConfigButton.addEventListener('click', () => {
+        let configValue = ((parseInt(adcrangeSelect.value, 10) & 0x1) << 4) | ((tempcompCheckbox.checked ? 1 : 0) << 5) | ((Math.round(parseInt(convdlyInput.value, 10) / 2) & 0xFF) << 6);
+        writeRegister(registers.CONFIG, configValue);
+    });
+    resetDeviceButton.addEventListener('click', () => writeRegister(registers.CONFIG, 1 << 15));
+    resetAccumulatorsButton.addEventListener('click', () => writeRegister(registers.CONFIG, 1 << 14));
+    writeAdcConfigButton.addEventListener('click', () => {
+        let adcConfigValue = ((parseInt(modeSelect.value, 10) & 0xF) << 12) | ((parseInt(vbusctSelect.value, 10) & 0x7) << 9) | ((parseInt(vshctSelect.value, 10) & 0x7) << 6) | ((parseInt(vtctSelect.value, 10) & 0x7) << 3) | (parseInt(avgSelect.value, 10) & 0x7);
+        writeRegister(registers.ADC_CONFIG, adcConfigValue);
+    });
+
+    debugButton.addEventListener('click', () => { debugModal.classList.remove('modal-hidden'); debugModal.classList.add('flex'); });
+    closeDebugModal.addEventListener('click', () => { debugModal.classList.add('modal-hidden'); debugModal.classList.remove('flex'); });
+    debugModal.addEventListener('click', (event) => { if (event.target === debugModal) closeDebugModal.click(); });
+    readDebugRegister.addEventListener('click', async () => {
+        const addr = parseInt(debugRegisterSelect.value, 10);
+        lastDebugRead.addr = addr;
+        writeCommand(`rreg ${addr.toString(16)}`);
+    });
+
+    document.addEventListener('DOMContentLoaded', initializeUI);
+</script>
+</body>
+</html>
+
