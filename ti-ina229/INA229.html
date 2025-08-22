@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INA229 Web USB/Serial Configurator</title>
+    <title>TI-SCB INA229 Data Logger</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -41,16 +41,19 @@
             background-color: #374151;
             color: #d1d5db;
         }
+        #plotCanvasContainer {
+            position: relative;
+            height:700px;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
-
-    <div class="container mx-auto p-4 lg:p-8">
+<body class="bg-gray-900 text-gray-200 w-screen">
+    <div class="p-4 lg:p-8 w-screen">
         <!-- Header Section -->
         <header class="mb-8 p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold text-white">INA229 Register Configurator</h1>
+                    <h1 class="text-3xl font-bold text-white">TI-SSB INA229 Application</h1>
                     <p class="text-gray-400 mt-1">A web-based UI to configure and monitor the INA229 via WebSerial and WebUSB.</p>
                 </div>
                 <div class="flex items-center">
@@ -63,15 +66,6 @@
             </div>
         </header>
 
-        <!-- Tab Navigation -->
-        <div id="tabContainer" class="hidden">
-            <div class="mb-4 border-b border-gray-700">
-                <nav class="flex space-x-2" aria-label="Tabs">
-                    <button id="configTab" class="tab-active px-4 py-2 text-sm font-medium rounded-t-lg">Configuration</button>
-                    <button id="viewerTab" class="tab-inactive px-4 py-2 text-sm font-medium rounded-t-lg">Viewer</button>
-                </nav>
-            </div>
-        </div>
         
         <!-- Connect Message -->
         <div id="connectMessage" class="text-center py-16 bg-gray-800 rounded-xl border border-gray-700">
@@ -81,171 +75,227 @@
 
         <!-- Main Content -->
         <main>
-            <!-- Configuration Tab Content -->
-            <div id="configContent" class="tab-content-hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-3 space-y-8">
-                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Configuration Registers</h2>
-                            <div class="register-grid">
-                                <!-- CONFIG Register -->
-                                <div class="bg-gray-700/50 p-4 rounded-lg">
-                                    <h3 class="font-bold text-lg">CONFIG (0x00)</h3>
-                                    <div class="space-y-3 mt-2">
-                                        <div class="flex items-center justify-between">
-                                            <label for="adcrange" class="text-sm">ADC Range (ADCRANGE)</label>
-                                            <select id="adcrange" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
-                                                <option value="0">±163.84 mV</option>
-                                                <option value="1">±40.96 mV</option>
-                                            </select>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="tempcomp" class="text-sm">Temp Comp (TEMPCOMP)</label>
-                                            <input type="checkbox" id="tempcomp" class="form-checkbox h-5 w-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600">
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="convdly" class="text-sm">Conversion Delay (ms)</label>
-                                            <input type="number" id="convdly" min="0" max="510" step="2" value="0" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
-                                        </div>
-                                        <button id="writeConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write CONFIG</button>
-                                        <div class="flex space-x-2">
-                                            <button id="resetDevice" class="w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Device</button>
-                                            <button id="resetAccumulators" class="w-1/2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Acc.</button>
+            <!-- Tab Navigation -->
+            <div id="tabContainer" class="hidden">
+                <div class="mb-4 border-b border-gray-700">
+                    <nav class="flex space-x-2" aria-label="Tabs">
+                        <button id="configTab" class="tab-active px-4 py-2 text-sm font-medium rounded-t-lg">Configuration</button>
+                        <button id="viewerTab" class="tab-inactive px-4 py-2 text-sm font-medium rounded-t-lg">Viewer</button>
+                    </nav>
+                </div>
+                <!-- Configuration Tab Content -->
+                <div id="configContent" class="tab-content-hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-3 space-y-8">
+                            <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Configuration Registers</h2>
+                                <div class="register-grid">
+                                    <!-- CONFIG Register -->
+                                    <div class="bg-gray-700/50 p-4 rounded-lg">
+                                        <h3 class="font-bold text-lg">CONFIG (0x00)</h3>
+                                        <div class="space-y-3 mt-2">
+                                            <div class="flex items-center justify-between">
+                                                <label for="adcrange" class="text-sm">ADC Range (ADCRANGE)</label>
+                                                <select id="adcrange" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
+                                                    <option value="0">±163.84 mV</option>
+                                                    <option value="1" selected>±40.96 mV</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="tempcomp" class="text-sm">Temp Comp (TEMPCOMP)</label>
+                                                <input type="checkbox" id="tempcomp" class="form-checkbox h-5 w-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600">
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="convdly" class="text-sm">Conversion Delay (ms)</label>
+                                                <input type="number" id="convdly" min="0" max="510" step="2" value="0" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                            </div>
+                                            <button id="writeConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write CONFIG</button>
+                                            <div class="flex space-x-2">
+                                                <button id="resetDevice" class="w-1/2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Device</button>
+                                                <button id="resetAccumulators" class="w-1/2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Reset Acc.</button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- ADC_CONFIG Register -->
-                                <div class="bg-gray-700/50 p-4 rounded-lg">
-                                    <h3 class="font-bold text-lg">ADC CONFIG (0x01)</h3>
-                                     <div class="space-y-3 mt-2">
-                                        <div class="flex items-center justify-between">
-                                            <label for="mode" class="text-sm">Mode</label>
-                                            <select id="mode" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
-                                                <option value="15">Continuous All</option>
-                                                <option value="11">Continuous Shunt/Bus</option>
-                                                <option value="10">Continuous Shunt</option>
-                                                <option value="9">Continuous Bus</option>
-                                                <option value="7">Triggered All</option>
-                                                <option value="0">Shutdown</option>
-                                            </select>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="vshct" class="text-sm">Shunt CT</label>
-                                            <select id="vshct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="vbusct" class="text-sm">Bus CT</label>
-                                            <select id="vbusct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
-                                        </div>
-                                         <div class="flex items-center justify-between">
-                                            <label for="vtct" class="text-sm">Temp CT</label>
-                                            <select id="vtct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="avg" class="text-sm">Averaging</label>
-                                            <select id="avg" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
-                                        </div>
-                                        <button id="writeAdcConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write ADC_CONFIG</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- SHUNT_CAL Register -->
-                                <div class="bg-gray-700/50 p-4 rounded-lg">
-                                    <h3 class="font-bold text-lg">SHUNT CAL (0x02)</h3>
-                                    <p class="text-xs text-gray-400 mb-2">Use helper or enter value directly.</p>
-                                    <div class="space-y-3 mt-2">
-                                        <div class="flex items-center justify-between">
-                                            <label for="rshunt" class="text-sm">R_Shunt (mΩ)</label>
-                                            <input type="number" id="rshunt" value="300" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="maxCurrent" class="text-sm">Max Current (mA)</label>
-                                            <input type="number" id="maxCurrent" value="50" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <label for="shuntCal" class="text-sm font-semibold">SHUNT_CAL Value</label>
-                                            <input type="number" id="shuntCal" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right font-mono">
-                                        </div>
-                                        <button id="writeShuntCal" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write SHUNT_CAL</button>
-                                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
-                                            <label class="text-xs text-gray-400">Calculated LSB</label>
-                                            <span id="currentLsbDisplay" class="text-xs font-mono text-gray-400">0 nA/LSB</span>
+                                    <!-- ADC_CONFIG Register -->
+                                    <div class="bg-gray-700/50 p-4 rounded-lg">
+                                        <h3 class="font-bold text-lg">ADC CONFIG (0x01)</h3>
+                                        <div class="space-y-3 mt-2">
+                                            <div class="flex items-center justify-between">
+                                                <label for="mode" class="text-sm">Mode</label>
+                                                <select id="mode" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2">
+                                                    <option value="15">Continuous All</option>
+                                                    <option value="11" selected>Continuous Shunt/Bus</option>
+                                                    <option value="10">Continuous Shunt</option>
+                                                    <option value="9">Continuous Bus</option>
+                                                    <option value="7">Triggered All</option>
+                                                    <option value="0">Shutdown</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="vshct" class="text-sm">Shunt CT</label>
+                                                <select id="vshct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="vbusct" class="text-sm">Bus CT</label>
+                                                <select id="vbusct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="vtct" class="text-sm">Temp CT</label>
+                                                <select id="vtct" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="avg" class="text-sm">Averaging</label>
+                                                <select id="avg" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2"></select>
+                                            </div>
+                                            <button id="writeAdcConfig" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write ADC_CONFIG</button>
                                         </div>
                                     </div>
+                                    
+                                    <!-- SHUNT_CAL Register -->
+                                    <div class="bg-gray-700/50 p-4 rounded-lg">
+                                        <h3 class="font-bold text-lg">SHUNT CAL (0x02)</h3>
+                                        <p class="text-xs text-gray-400 mb-2">Use helper or enter value directly.</p>
+                                        <div class="space-y-3 mt-2">
+                                            <div class="flex items-center justify-between">
+                                                <label for="rshunt" class="text-sm">R_Shunt (mΩ)</label>
+                                                <input type="number" id="rshunt" value="300" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="maxCurrent" class="text-sm">Max Current (mA)</label>
+                                                <input type="number" id="maxCurrent" value="50" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right">
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <label for="shuntCal" class="text-sm font-semibold">SHUNT_CAL Value</label>
+                                                <input type="number" id="shuntCal" class="bg-gray-800 border border-gray-600 text-sm rounded-md p-1 w-1/2 text-right font-mono">
+                                            </div>
+                                            <button id="writeShuntCal" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Write SHUNT_CAL</button>
+                                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
+                                                <label class="text-xs text-gray-400">Calculated LSB</label>
+                                                <span id="currentLsbDisplay" class="text-xs font-mono text-gray-400">0 nA/LSB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Data Capture Options Register -->
+                                    <div class="bg-gray-700/50 p-4 rounded-lg">
+                                        <h3 class="font-bold text-lg">Data to Capture</h3>
+                                        <div id="plotSelectContainer" class="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
+                                            <!-- Checkboxes will be injected here -->
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Viewer Tab Content -->
-            <div id="viewerContent" class="tab-content-hidden">
-                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-8">
-                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Real-time Plot & Capture</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
-                                <div>
-                                    <label class="text-sm font-medium">Data to Plot:</label>
-                                    <div id="plotSelectContainer" class="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
-                                        <!-- Checkboxes will be injected here -->
+                <!-- Viewer Tab Content -->
+                <div id="viewerContent" class="tab-content-hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 space-y-8">
+                            <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Real-time Plot & Capture</h2>
+                                <div class="flex mb-4 gap-2">
+                                    <div class="space-y-2">
+                                        <label for="rollingWindow" class="text-sm font-medium">Rolling Window (s):</label>
+                                        <input type="number" id="rollingWindow" value="30" size="8" class="mt-1 bg-gray-900 border border-gray-600 text-sm rounded-md p-2">
+                                    </div>
+                                    <button id="startStopPlotButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Start</button>
+                                    <button id="clearPlotButton" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Clear</button>
+                                    <button id="downloadCsvButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Download CSV</button>
+                                    <button id="downloadPictureButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Snapshot</button>
+                                </div>
+                                <div class="bg-black rounded-lg p-2" id="plotCanvasContainer">
+                                    <canvas id="plotCanvas"></canvas>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mt-4 text-center">
+                                    <div>
+                                        <h4 class="text-sm text-gray-400">Y-Axis</h4>
+                                        <div class="flex items-center justify-center mt-1">
+                                            <input id="autoRange" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                                            <label for="autoRange" class="ml-2 text-sm">Auto</label>
+                                        </div>
+                                        <div id="manualRangeContainer" class="hidden flex flex-col space-y-1 mt-1">
+                                            <input type="number" id="yMin" placeholder="Min" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                            <input type="number" id="yMax" placeholder="Max" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="space-y-2">
-                                     <label for="rollingWindow" class="text-sm font-medium">Rolling Window (s):</label>
-                                     <input type="number" id="rollingWindow" value="30" class="w-full mt-1 bg-gray-900 border border-gray-600 text-sm rounded-md p-2">
-                                     <div class="grid grid-cols-3 gap-2 pt-1">
-                                        <button id="startStopPlotButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Start</button>
-                                        <button id="clearPlotButton" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Clear</button>
-                                        <button id="downloadCsvButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Download CSV</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="bg-black rounded-lg p-2">
-                                <canvas id="plotCanvas"></canvas>
-                            </div>
-                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mt-4 text-center">
-                                <div>
-                                    <h4 class="text-sm text-gray-400">Y-Axis</h4>
-                                    <div class="flex items-center justify-center mt-1">
-                                        <input id="autoRange" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
-                                        <label for="autoRange" class="ml-2 text-sm">Auto</label>
-                                    </div>
-                                    <div id="manualRangeContainer" class="hidden flex flex-col space-y-1 mt-1">
-                                        <input type="number" id="yMin" placeholder="Min" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
-                                        <input type="number" id="yMax" placeholder="Max" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
-                                    </div>
-                                </div>
-                                <div><h4 class="text-sm text-gray-400">Current</h4><p id="statCurrent" class="font-mono text-lg">--</p></div>
-                                <div><h4 class="text-sm text-gray-400">Min</h4><p id="statMin" class="font-mono text-lg">--</p></div>
-                                <div><h4 class="text-sm text-gray-400">Max</h4><p id="statMax" class="font-mono text-lg">--</p></div>
-                                <div><h4 class="text-sm text-gray-400">Average</h4><p id="statAvg" class="font-mono text-lg">--</p></div>
-                                <div><h4 class="text-sm text-gray-400">Expected SPS</h4><p id="statExpectedSps" class="font-mono text-lg">--</p></div>
-                                <div><h4 class="text-sm text-gray-400">Actual SPS</h4><p id="statActualSps" class="font-mono text-lg">--</p></div>
-                            </div>
-                        </section>
-                    </div>
+                                <div class="grid grid-cols-6 gap-0 mt-0 text-center" id="summary-statistics">
+                                    <h4 class="text-lg text-gray-400">Series</h4>
+                                    <h4 class="text-lg text-gray-400">Samples</h4>
+                                    <h4 class="text-lg text-gray-400">Current</h4>
+                                    <h4 class="text-lg text-gray-400">Average</h4>
+                                    <h4 class="text-lg text-gray-400">Min</h4>
+                                    <h4 class="text-lg text-gray-400">Max</h4>
+                                    <template id="t-summary-statistics">
+                                        <div class="grid-rows-subgrid col-span-6 grid grid-cols-subgrid">
+                                            <p class="text-sm text-gray-400" data-var="series">--</p>
+                                            <p class="text-sm text-gray-400" data-var="count">--</p>
+                                            <p class="text-sm text-gray-400" data-var="current">--</p>
+                                            <p class="text-sm text-gray-400" data-var="avg">--</p>
+                                            <p class="text-sm text-gray-400" data-var="min">--</p>
+                                            <p class="text-sm text-gray-400" data-var="max">--</p>
+                                        </div>
+                                    </template>
 
-                    <div class="lg:col-span-1 space-y-8">
-                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                            <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
-                                <h2 class="text-2xl font-semibold text-white">Live Data</h2>
-                                <button id="readAllButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm">Read Once (Serial)</button>
-                            </div>
-                            <div id="readout-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <!-- Data fields will be injected here by JS -->
-                            </div>
-                        </section>
+                                </div>
+                            </section>
+                        </div>
 
-                        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                             <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Device Info</h2>
-                             <div class="space-y-2 text-sm">
-                                <div class="flex justify-between"><span>Manufacturer ID:</span><span id="manufacturerId" class="font-mono text-gray-400">--</span></div>
-                                <div class="flex justify-between"><span>Device ID:</span><span id="deviceId" class="font-mono text-gray-400">--</span></div>
-                             </div>
-                        </section>
+                        <div class="lg:col-span-1 space-y-8">
+                            <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
+                                    <h2 class="text-2xl font-semibold text-white">Live Data</h2>
+                                    <button id="readAllButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm">Read Once (Serial)</button>
+                                </div>
+                                <div id="readout-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <!-- Data fields will be injected here by JS -->
+                                </div>
+                            </section>
+
+                            <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Scale</h2>
+                                <div class="grid grid-cols-3 mt-0 gap-2">
+                                    <h4 class="text-lg text-gray-400 row-span-2">Volts</h4>
+                                    <p class="text-sm text-gray-400 col-span-2">
+                                        <input id="autoRangeV" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                                        <label for="autoRangeV" class="ml-2 text-sm">Auto Scale</label>
+                                    </p>
+                                    <input type="number" id="yMinV" placeholder="Min" step="0.1" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                    <input type="number" id="yMaxV" placeholder="Max" step="0.1" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                
+                                    <h4 class="text-lg text-gray-400 row-span-2">Amps</h4>
+                                    <p class="text-sm text-gray-400 col-span-2">
+                                        <input id="autoRangeA" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                                        <label for="autoRangeA" class="ml-2 text-sm">Auto Scale</label>
+                                    </p>
+                                    <input type="number" id="yMinA" placeholder="Min" step="0.010" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                    <input type="number" id="yMaxA" placeholder="Max" step="0.010" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+
+                                    <h4 class="text-lg text-gray-400 row-span-2">Watts</h4>
+                                    <p class="text-sm text-gray-400 col-span-2">
+                                        <input id="autoRangeW" type="checkbox" checked class="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                                        <label for="autoRangeW" class="ml-2 text-sm">Auto Scale</label>
+                                    </p>
+                                    <input type="number" id="yMinW" placeholder="Min" step="0.010" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                    <input type="number" id="yMaxW" placeholder="Max" step="0.010" class="bg-gray-700 border border-gray-600 text-xs rounded-md p-1 w-full text-center">
+                                </div>
+                            </section>
+
+                            <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-600 pb-2">Device Info</h2>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between"><span>Manufacturer ID:</span><span id="manufacturerId" class="font-mono text-gray-400">--</span></div>
+                                    <div class="flex justify-between"><span>Device ID:</span><span id="deviceId" class="font-mono text-gray-400">--</span></div>
+                                </div>
+                                <h2 class="text-2xl font-semibold text-white mt-4 mb-4 border-b border-gray-600 pb-2">Performance</h2>
+                                <div class="space-y-2 text-sm"> 
+                                    <div class="flex justify-between"><span>Expected Sample Rate:</span><span id="statExpectedSps" class="font-mono text-gray-400">--</span></div>
+                                    <div class="flex justify-between"><span>Actual Sample Rate</span><span id="statActualSps" class="font-mono text-gray-400">--</span></div>
+                                </div>
+                            </section>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -358,14 +408,102 @@
     const manualRangeContainer = document.getElementById('manualRangeContainer');
     const yMinInput = document.getElementById('yMin');
     const yMaxInput = document.getElementById('yMax');
-    const statCurrent = document.getElementById('statCurrent');
-    const statMin = document.getElementById('statMin');
-    const statMax = document.getElementById('statMax');
-    const statAvg = document.getElementById('statAvg');
     const statExpectedSps = document.getElementById('statExpectedSps');
     const statActualSps = document.getElementById('statActualSps');
     const downloadCsvButton = document.getElementById('downloadCsvButton');
+    const downloadPictureButton = document.getElementById('downloadPictureButton');
     const rollingWindowInput = document.getElementById('rollingWindow');
+
+    const summaryStatisticsContainer = document.getElementById('summary-statistics');
+    const summaryStatisticsTemplate = document.getElementById('t-summary-statistics');
+
+    const UNIT_TEMP = '°C';
+    const UNIT_AMP = 'A';
+    const UNIT_POWER = 'W';
+    const UNIT_VOLT = 'V';
+    
+    function StatsManager () {
+        const series = [];
+
+        const addSeries = (seriesName, seriesData) => {
+            const reg = plottableRegisters.find(r => r.name === seriesName);
+            const unit = reg ? reg.unit : '';
+
+            const container = summaryStatisticsTemplate.content.querySelector("div").cloneNode(true);
+            const mappings = [];
+
+            for (const i of container.querySelectorAll("[data-var]")) {
+                mappings.push([i.getAttribute('data-var'), i]);
+            }
+
+            summaryStatisticsContainer.append(container);
+
+            const remove = () => {
+                container.remove();
+            }
+
+            const update = () => {
+                if (seriesData.length > 0) {
+                    const values = seriesData.map(p => p.y);
+
+                    let data = {
+                        current: values[values.length - 1],
+                        min: Math.min(...values),
+                        max: Math.max(...values),
+                        avg: values.reduce((a, b) => a + b, 0) / values.length,
+                        count: values.length,
+                        series: seriesName
+                    };
+                    for (const [key, value] of mappings) {
+                        if (key === 'count' || key === 'series') {
+                            value.innerHTML = data[key];
+                        } else {
+                            const f = formatValue(data[key], unit);
+                            value.innerHTML = `${f.value} ${f.unit}`;
+                        }
+                    }
+                } else {
+                    let data = {
+                        current: '--',
+                        min: '--',
+                        max: '--',
+                        avg: '--',
+                        count: '0',
+                        series: seriesName
+                    };
+                    for (const [key, value] of mappings) {
+                        value.innerHTML = data[key];
+                    }
+                }
+            }
+
+            series.push({
+                remove: remove,
+                update: update
+            });
+        }
+
+        const update = () => {
+            for (let i of series) {
+                i.update();
+            }
+        }
+
+        const clear = () => {
+            for (let i of series) {
+                i.remove();
+            }
+            series.splice(0,series.length);
+        }
+
+        return {
+            add : addSeries,
+            update : update,
+            clear : clear
+        }
+    }
+
+
 
     // Web Communication State
     let worker = null;
@@ -374,11 +512,12 @@
     let isPlotting = false;
     let plotChart;
     let plotData = {};
+    let statsManager = StatsManager();
     let plotStartTime = 0;
     let sampleCountForSps = 0;
     let lastSpsUpdateTime = 0;
     let renderLoopId;
-
+    let rollingWindow = 30;
     // INA229 Constants and Register Map
     const registers = {
         CONFIG: 0x00, ADC_CONFIG: 0x01, SHUNT_CAL: 0x02, SHUNT_TEMPCO: 0x03, VSHUNT: 0x04,
@@ -388,11 +527,11 @@
     };
 
     const plottableRegisters = [
-        { name: 'VSHUNT', addr: registers.VSHUNT, unit: 'V', bits: 24, signed: true, color: '#34d399' },
-        { name: 'VBUS', addr: registers.VBUS, unit: 'V', bits: 24, signed: false, color: '#60a5fa' },
-        { name: 'DIETEMP', addr: registers.DIETEMP, unit: '°C', bits: 16, signed: true, color: '#f87171' },
-        { name: 'CURRENT', addr: registers.CURRENT, unit: 'A', bits: 24, signed: true, color: '#facc15' },
-        { name: 'POWER', addr: registers.POWER, unit: 'W', bits: 24, signed: false, color: '#c084fc' },
+        { name: 'VSHUNT', addr: registers.VSHUNT, unit: 'V', bits: 24, signed: true, color: '#34d399B0' },
+        { name: 'VBUS', addr: registers.VBUS, unit: 'V', bits: 24, signed: false, color: '#60a5faB0' },
+        { name: 'DIETEMP', addr: registers.DIETEMP, unit: '°C', bits: 16, signed: true, color: '#f87171B0' },
+        { name: 'CURRENT', addr: registers.CURRENT, unit: 'A', bits: 24, signed: true, color: '#facc15B0' },
+        { name: 'POWER', addr: registers.POWER, unit: 'W', bits: 24, signed: false, color: '#c084fcB0' },
     ];
     const allRegisters = [ ...plottableRegisters,
         { name: 'ENERGY', addr: registers.ENERGY, unit: 'J', bits: 40, signed: false },
@@ -423,11 +562,59 @@
         });
     }
 
+    const axisRange = (() => {
+
+        const units = [];
+
+        for (const unit of [UNIT_AMP,UNIT_POWER,UNIT_VOLT]) {
+            const autorange = document.getElementById(`autoRange${unit}`);
+            const min = document.getElementById(`yMin${unit}`);
+            const max = document.getElementById(`yMax${unit}`);
+            console.debug(`Adding ${unit}... ${autorange} ${min} ${max}`)
+
+            const updateScale = () => {
+                if (!plotChart.options.scales[`y-${unit}`]) {
+                    console.debug(`Axis for unit ${unit} not found.`);
+                } else {
+                    console.debug(`Scale ${unit}.`);
+                    if (autorange.checked) {
+                        delete plotChart.options.scales[`y-${unit}`].min;
+                        delete plotChart.options.scales[`y-${unit}`].max;
+                        delete plotChart.options.scales[`y-${unit}`].beginAtZero;
+                    } else {
+                        let minVal = parseFloat(min.value);
+
+                        plotChart.options.scales[`y-${unit}`].min = minVal;
+                        plotChart.options.scales[`y-${unit}`].max = parseFloat(max.value);
+                        plotChart.options.scales[`y-${unit}`].beginAtZero = plotChart.options.scales[`y-${unit}`].min === 0.0;
+                    }
+                }
+            }
+
+            autorange.addEventListener('change', updateScale);
+            min.addEventListener('change', updateScale);
+            max.addEventListener('change', updateScale);
+
+            units.push(updateScale);
+        }
+
+        const resetScale = () => {
+            for (let unit of units) {
+                unit();
+            }
+        }
+
+        return {
+            reset: resetScale
+        }
+
+    })();
+
     function initializeUI() {
         populateSelect(vshctSelect, conversionTimes, 5);
-        populateSelect(vbusctSelect, conversionTimes, 5);
-        populateSelect(vtctSelect, conversionTimes, 5);
-        populateSelect(avgSelect, averagingCounts, 0);
+        populateSelect(vbusctSelect, conversionTimes, 0);
+        populateSelect(vtctSelect, conversionTimes, 0);
+        populateSelect(avgSelect, averagingCounts, 2);
         readoutGrid.innerHTML = allRegisters.map(reg => `<div class="bg-gray-700/50 p-3 rounded-lg"><div class="flex justify-between items-baseline"><span class="text-sm text-gray-400">${reg.name}</span><div class="text-right"><span id="readout-${reg.name}" class="text-xl font-mono font-semibold text-cyan-400">0.000</span><span id="unit-${reg.name}" class="ml-1 text-lg font-mono text-cyan-400">${reg.unit}</span></div></div></div>`).join('');
         debugRegisterSelect.innerHTML = Object.keys(registers).map(name => `<option value="${registers[name]}">${name} (0x${registers[name].toString(16).padStart(2, '0')})</option>`).join('');
         
@@ -461,8 +648,19 @@
         }
 
         try {
-            await navigator.serial.requestPort();
-            await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1cbe, productId: 0x00ab }] });
+            let ports = await navigator.serial.getPorts();
+            if (ports.length == 0) {
+                await navigator.serial.requestPort(
+                    {filters: [{
+                        usbVendorId: 0x1cbe,
+                        usbProductId: 0x00ab
+                    }]}
+                );
+            }
+            let devs = await navigator.usb.getDevices();
+            if (devs.length == 0) {
+                await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1cbe, productId: 0x00ab }] });
+            }
 
             worker = new Worker('INA229_worker.js');
             worker.onmessage = handleWorkerMessage;
@@ -531,6 +729,7 @@
             connectMessage.classList.add('hidden');
             tabContainer.classList.remove('hidden');
             switchTab('config');
+            writeCommand('stop 1');
             writeCommand('setdevice 1');
             readRegister(registers.MANUFACTURER_ID);
             readRegister(registers.DEVICE_ID);
@@ -714,6 +913,7 @@
             type: 'line',
             data: { datasets: [] },
             options: {
+                maintainAspectRatio: false,
                 animation: false,
                 scales: {
                     x: { type: 'linear', title: { display: true, text: 'Time (s)', color: '#9ca3af' }, ticks: { color: '#9ca3af' } },
@@ -728,26 +928,25 @@
         const series = plotData[seriesName];
         const timestamp = (performance.now() - plotStartTime) / 1000;
         series.push({x: timestamp, y: value});
+        const cutoff = timestamp - rollingWindow
+
+        // Trim old data
+        const firstIndexToKeep = series.findIndex(item => item.x >= timestamp - rollingWindow);
+        if (firstIndexToKeep > -1)  series.splice(0,firstIndexToKeep);
     }
     
     let lastRenderTime = 0;
     function renderLoop(timestamp) {
         if (!isPlotting) return;
         
-        if (timestamp - lastRenderTime > (1000 / 30)) { // ~30 FPS
+        if (timestamp - lastRenderTime > (1000 / 60)) { // ~60 FPS
             lastRenderTime = timestamp;
             const now = (performance.now() - plotStartTime) / 1000;
-            const window = parseFloat(rollingWindowInput.value);
-            plotChart.options.scales.x.min = now < window ? 0 : now - window;
-            plotChart.options.scales.x.max = now < window ? window : now;
+            plotChart.options.scales.x.min = now - (rollingWindow);
+            plotChart.options.scales.x.max = now;
 
             plotChart.update();
-
-            const firstSelected = document.querySelector('#plotSelectContainer input:checked');
-            if (firstSelected) {
-                const seriesName = firstSelected.dataset.name;
-                updateStats(seriesName, plotData[seriesName]);
-            }
+            statsManager.update();
             
             const elapsedSeconds = (performance.now() - lastSpsUpdateTime) / 1000;
             if (elapsedSeconds >= 1) {
@@ -761,30 +960,14 @@
         renderLoopId = requestAnimationFrame(renderLoop);
     }
 
-    function updateStats(seriesName, series) {
-        if (series.length === 0) {
-            [statCurrent, statMin, statMax, statAvg].forEach(el => el.textContent = '--');
-            return;
-        }
-        const values = series.map(p => p.y);
-        const current = values[values.length - 1];
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const avg = values.reduce((a, b) => a + b, 0) / values.length;
-        const reg = plottableRegisters.find(r => r.name === seriesName);
-        const unit = reg ? reg.unit : '';
-
-        statCurrent.textContent = formatValue(current, unit).value + ' ' + formatValue(current, unit).unit;
-        statMin.textContent = formatValue(min, unit).value + ' ' + formatValue(min, unit).unit;
-        statMax.textContent = formatValue(max, unit).value + ' ' + formatValue(max, unit).unit;
-        statAvg.textContent = formatValue(avg, unit).value + ' ' + formatValue(avg, unit).unit;
-    }
-
+    
     function clearPlot() {
-        plottableRegisters.forEach(reg => { plotData[reg.name] = []; });
-        plotChart.data.datasets.forEach(ds => ds.data = []);
+        // Human: Preserve datasets
+        //plottableRegisters.forEach(reg => { plotData[reg.name] = []; });
+        //plotChart.data.datasets.forEach(ds => ds.data = []);
+        plottableRegisters.forEach(reg => { plotData[reg.name].splice(0,plotData[reg.name].length); });
         plotChart.update();
-        updateStats(plotSelectContainer.querySelector('input:checked')?.dataset.name, []);
+        statsManager.update();
         statExpectedSps.textContent = '--';
         statActualSps.textContent = '--';
     }
@@ -812,6 +995,13 @@
                 await startStopPlotButton.click();
             }
         } else { // viewer
+
+            // Human slop: Write all the regs by... uhhhh clicking the UI.
+            resetDeviceButton.click();
+            writeConfigButton.click();
+            writeShuntCalButton.click();
+            writeAdcConfigButton.click();
+
             viewerTab.classList.replace('tab-inactive', 'tab-active');
             configTab.classList.replace('tab-active', 'tab-inactive');
             viewerContent.classList.remove('tab-content-hidden');
@@ -832,7 +1022,6 @@
     startStopPlotButton.addEventListener('click', async () => {
         if (isPlotting) { // Stop
             isPlotting = false;
-            stopUsbLoop = true;
             cancelAnimationFrame(renderLoopId);
             worker.postMessage({type: 'stop-stream'});
             startStopPlotButton.textContent = 'Start';
@@ -846,6 +1035,7 @@
             if (selectedSeries.length === 0) { alert('Please select at least one data series to plot.'); return; }
             
             clearPlot();
+            statsManager.clear();
             isPlotting = true;
             plotStartTime = performance.now();
             lastSpsUpdateTime = performance.now();
@@ -880,6 +1070,8 @@
                         }}
                     };
                 }
+
+                statsManager.add(name, plotData[name]);
             });
             plotChart.options.scales = { ...plotChart.options.scales, ...yAxes };
             
@@ -900,22 +1092,9 @@
     
     clearPlotButton.addEventListener('click', clearPlot);
 
-    autoRangeCheckbox.addEventListener('change', () => {
-        manualRangeContainer.classList.toggle('hidden', autoRangeCheckbox.checked);
-        Object.keys(plotChart.options.scales).forEach(axisId => {
-            if (axisId.startsWith('y-')) {
-                if (autoRangeCheckbox.checked) {
-                    delete plotChart.options.scales[axisId].min;
-                    delete plotChart.options.scales[axisId].max;
-                } else {
-                    plotChart.options.scales[axisId].min = parseFloat(yMinInput.value) || null;
-                    plotChart.options.scales[axisId].max = parseFloat(yMaxInput.value) || null;
-                }
-            }
-        });
-        plotChart.update();
-    });
-    [yMinInput, yMaxInput].forEach(el => el.addEventListener('input', () => { if (!autoRangeCheckbox.checked) autoRangeCheckbox.dispatchEvent(new Event('change')); }));
+    function updateAxis () {
+
+    }
 
     downloadCsvButton.addEventListener('click', () => {
         const selectedSeriesNames = Array.from(plotSelectContainer.querySelectorAll('input:checked')).map(cb => cb.dataset.name);
@@ -945,7 +1124,19 @@
         link.click();
         document.body.removeChild(link);
     });
-    
+
+    downloadPictureButton.addEventListener('click', () => {
+        plotCanvas.toBlob((blob) => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `ina229_capture.png`);
+            document.body.appendChild(link); // Append to body to make it clickable
+            link.click();
+            document.body.removeChild(link); // Remove after click
+            URL.revokeObjectURL(link.href); // Clean up the URL
+        }, 'image/png');
+    });
+
     [rshuntInput, maxCurrentInput, adcrangeSelect].forEach(el => el.addEventListener('input', calculateShuntCal));
     writeShuntCalButton.addEventListener('click', () => { const val = parseInt(shuntCalInput.value, 10); if (!isNaN(val)) writeRegister(registers.SHUNT_CAL, val); });
     writeConfigButton.addEventListener('click', () => {
@@ -967,6 +1158,16 @@
         lastDebugRead.addr = addr;
         writeCommand(`rreg ${addr.toString(16)}`);
     });
+
+    rollingWindowInput.addEventListener('change', () => {
+        if (rollingWindowInput.value.length > 0) {
+            try {
+                rollingWindow = parseFloat(rollingWindowInput.value);
+            } catch(e) {
+                console.error(`Rolling Window is not a number: ${rollingWindowInput.value}`)
+            }
+        }
+    })
 
     document.addEventListener('DOMContentLoaded', initializeUI);
 </script>

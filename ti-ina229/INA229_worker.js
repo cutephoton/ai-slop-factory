@@ -5,6 +5,58 @@ let usbDevice, stopUsbLoop = false;
 const textDecoder = new TextDecoder();
 const textEncoder = new TextEncoder();
 
+let queue = [];
+let state = 'idle';
+let ackd = true;
+
+function createLineReader(reader) {
+  // Buffer to store partial lines
+  let buffer = '';
+
+  /**
+   * The returned async function that reads one line.
+   * @returns {Promise<string | null>} A promise for the next line or null.
+   */
+  return async function readLine() {
+    // Loop indefinitely until a line is found or the stream ends.
+    while (true) {
+      // Check if the buffer already contains a newline character.
+      const newlineIndex = buffer.indexOf('\r\n');
+      if (newlineIndex !== -1) {
+        // A line is present in the buffer.
+        // Extract the line (up to the newline character).
+        const line = buffer.slice(0, newlineIndex);
+        // Remove the extracted line (and the newline char) from the buffer.
+        buffer = buffer.slice(newlineIndex + 2);
+        // Return the complete line.
+        return line;
+      }
+
+      // If no newline is in the buffer, read the next chunk from the stream.
+      const {
+        value,
+        done
+      } = await reader.read();
+
+      if (done) {
+        // The stream has ended.
+        if (buffer.length > 0) {
+          // If there's any remaining data in the buffer, it's the last line.
+          const lastLine = buffer;
+          buffer = ''; // Clear the buffer.
+          return lastLine;
+        }
+        // No more data in the buffer or the stream.
+        return null;
+      }
+
+      // A new chunk of text has been received. Append it to the buffer.
+      // The loop will then repeat, checking again for a newline.
+      buffer += value;
+    }
+  };
+}
+
 self.onmessage = async (event) => {
     const { type, command } = event.data;
 
@@ -24,7 +76,7 @@ self.onmessage = async (event) => {
             break;
         case 'stop-stream':
             stopUsbLoop = true;
-            await writeCommand('stop');
+            await writeCommand('stop 1');
             break;
     }
 };
@@ -36,7 +88,7 @@ async function handleConnect() {
         serialPort = serialPorts[0];
         await serialPort.open({ baudRate: 115200 });
         serialWriter = serialPort.writable.getWriter();
-        serialReader = serialPort.readable.getReader();
+        serialReader = createLineReader(serialPort.readable.pipeThrough(new TextDecoderStream()).getReader())
         
         const usbDevices = await navigator.usb.getDevices();
         if (usbDevices.length === 0) throw new Error("No USB device granted.");
@@ -63,55 +115,56 @@ async function handleDisconnect() {
 }
 
 async function writeCommand(command) {
-    if (!serialWriter) return;
-    self.postMessage({ type: 'log', payload: { message: command, direction: 'out' } });
-    await serialWriter.write(textEncoder.encode(command + '\n'));
+    queue.push(command);
+    handleQueue();
 }
 
-let serialReadBuffer = new Uint8Array();
+async function handleQueue() {
+    if (!serialWriter) return;
+    if ((state == 'idle' || state == 'collecting') && ackd) {
+        if (queue.length > 0) {
+            let cmd = queue.shift();
+            self.postMessage({ type: 'log', payload: { message: cmd, direction: 'out' } });
+            ackd = false;
+            console.debug(`OUT> ${cmd}`);
+            await serialWriter.write(textEncoder.encode(cmd + "\n"));
+        }
+    } else {
+        console.debug(`Deferred. ${queue.length} pending.`)
+    }
+}
+
 async function readSerialLoop() {
     while (true) {
         try {
-            const { value, done } = await serialReader.read();
-            if (done) break;
-            
-            const newBuffer = new Uint8Array(serialReadBuffer.length + value.length);
-            newBuffer.set(serialReadBuffer);
-            newBuffer.set(value, serialReadBuffer.length);
-            serialReadBuffer = newBuffer;
-            processTextBuffer();
+            let line = await serialReader()
+            if (line === null) {
+                break;
+            }
+            // for some reason they issue malformed json with \n character in the output
+            // JSON frames are delimited by \r\n.
+            line = line.replace("\n", '') 
+            self.postMessage({ type: 'log', payload: { message: line, direction: 'in' } });
+            console.debug(`IN> ${line}`);
+            try {
+                const data = JSON.parse(line);
+                if (data.acknowledge) {
+                    ackd = true;
+                }
+                if (data.evm_state) {
+                    state = data.evm_state;
+                }
+                if (data.register) {
+                    self.postMessage({ type: 'processed-register-data', payload: { address: data.register.address, rawValue: data.register.value } });
+                }
+            } catch (e) { /* Ignore non-JSON lines */ }
+            handleQueue();
         } catch (error) {
             self.postMessage({ type: 'log', payload: { message: `Worker serial read error: ${error.message}`, direction: 'system' } });
             break;
         }
     }
 }
-
-function processTextBuffer() {
-    try {
-        const text = textDecoder.decode(serialReadBuffer);
-        const lastNewline = text.lastIndexOf('\n');
-        if (lastNewline === -1) return;
-
-        const linesToProcess = text.substring(0, lastNewline);
-        linesToProcess.split('\n').forEach(line => {
-            const trimmed = line.trim();
-            if (trimmed) {
-                self.postMessage({ type: 'log', payload: { message: trimmed, direction: 'in' } });
-                try {
-                    const data = JSON.parse(trimmed);
-                    if (data.register) {
-                        self.postMessage({ type: 'processed-register-data', payload: { address: data.register.address, rawValue: data.register.value } });
-                    }
-                } catch (e) { /* Ignore non-JSON lines */ }
-            }
-        });
-        
-        const bytesToProcess = textEncoder.encode(text.substring(0, lastNewline + 1)).length;
-        serialReadBuffer = serialReadBuffer.slice(bytesToProcess);
-    } catch(e) { /* Ignore decode errors on partial data */ }
-}
-
 
 async function readUsbLoop() {
     stopUsbLoop = false;
